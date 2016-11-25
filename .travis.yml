@@ -11,7 +11,7 @@ notifications:
   email: false
 
 before_install:
-- export D2K=mathlab/deal2lkit:master-debugrelease
+- export D2K=mathlab/deal2lkit:dev-debugrelease
 - docker pull $D2K
 - docker run -P -v `pwd`:/home/dealii/pi-DoMUS:rw $D2K /bin/sh -c "cd pi-DoMUS; ./scripts/check_indentation.sh"
 
