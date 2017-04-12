@@ -54,10 +54,12 @@
 
 #include "lac/lac_type.h"
 #include "lac/lac_initializer.h"
+#include "tria_helper.h"
 
 using namespace dealii;
 using namespace deal2lkit;
 using namespace pidomus;
+
 
 template <int dim, int spacedim = dim, typename LAC = LATrilinos>
 class piDoMUS : public ParameterAcceptor
@@ -78,6 +80,8 @@ public:
   piDoMUS (const std::string &name,
            const BaseInterface<dim, spacedim, LAC> &energy);
 #endif
+
+  ~piDoMUS();
 
   virtual void declare_parameters(ParameterHandler &prm);
   virtual void parse_parameters_call_back();
@@ -305,7 +309,7 @@ private:
   void set_constrained_dofs_to_zero(typename LAC::VectorType &v) const;
 
 #ifdef DEAL_II_WITH_MPI
-  const MPI_Comm comm;
+  MPI_Comm comm;
 #endif
   const BaseInterface<dim, spacedim, LAC>    &interface;
 
@@ -315,10 +319,10 @@ private:
 
   ConditionalOStream        pcout;
 
-  ParsedGridGenerator<dim, spacedim>   pgg;
+  TriaHelper<dim,spacedim,LAC> tria_helper;
+  Triangulation<dim,spacedim> *triangulation;
   ParsedGridRefinement  pgr;
 
-  shared_ptr<parallel::distributed::Triangulation<dim, spacedim> > triangulation;
   shared_ptr<FiniteElement<dim, spacedim> >       fe;
   shared_ptr<DoFHandler<dim, spacedim> >          dof_handler;
 

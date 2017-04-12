@@ -1,5 +1,6 @@
 #include "pidomus.h"
 #include "pidomus_macros.h"
+#include "pidomus_signals.h"
 
 #include <deal.II/base/logstream.h>
 #include <deal.II/base/conditional_ostream.h>
@@ -25,6 +26,8 @@
 #include <typeinfo>
 #include <limits>
 #include <numeric>
+
+#include "tria_helper.h"
 
 
 using namespace dealii;
@@ -54,7 +57,7 @@ piDoMUS<dim, spacedim, LAC>::piDoMUS (const std::string &name,
          (Utilities::MPI::this_mpi_process(comm)
           == 0)),
 
-  pgg("Domain"),
+  tria_helper(comm),
 
   pgr("Refinement"),
 
@@ -131,8 +134,6 @@ piDoMUS<dim, spacedim, LAC>::piDoMUS (const std::string &name,
   interface(interface),
   pcout (std::cout),
 
-  pgg("Domain"),
-
   pgr("Refinement"),
 
   train_constraints(interface.n_matrices),
@@ -196,6 +197,13 @@ piDoMUS<dim, spacedim, LAC>::piDoMUS (const std::string &name,
 }
 #endif
 
+template <int dim, int spacedim, typename LAC>
+piDoMUS<dim, spacedim, LAC>::~piDoMUS ()
+{
+#ifdef DEAL_II_WITH_MPI
+  MPI_Comm_free(&comm);
+#endif
+}
 
 template <int dim, int spacedim, typename LAC>
 void piDoMUS<dim, spacedim, LAC>::run ()
@@ -254,9 +262,10 @@ void piDoMUS<dim, spacedim, LAC>::make_grid_fe()
 {
   auto _timer = computing_timer.scoped_timer("Make grid and finite element");
   signals.begin_make_grid_fe();
-  triangulation = SP(pgg.distributed(comm));
+  tria_helper.make_grid();
+  triangulation = tria_helper.get_tria();
   dof_handler = SP(new DoFHandler<dim, spacedim>(*triangulation));
-  signals.postprocess_newly_created_triangulation(*triangulation);
+  signals.postprocess_newly_created_triangulation(triangulation);
   fe = SP(interface.pfe());
   triangulation->refine_global (initial_global_refinement);
   signals.end_make_grid_fe();
