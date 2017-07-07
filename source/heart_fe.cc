@@ -29,11 +29,11 @@ Heart<dim,spacedim>::Heart()
 {}
 
 template <int dim, int spacedim>
-Heart<dim,spacedim>::Heart(bool side, const int degree)
+Heart<dim,spacedim>::Heart(bool side)
   :
-  fe (FE_Q<dim>(degree), spacedim),
+  fe (FE_Q<dim>(side?4:2), spacedim),
   dof_handler (triangulation),
-  solution(3),
+  solution(100),
   side(side)
 {
   if (side)
@@ -42,18 +42,15 @@ Heart<dim,spacedim>::Heart(bool side, const int degree)
   }
   else
   {
-    Assert (degree == 1 || degree == 2,
-            ExcMessage("Fe degree must either be equal 1 or 2. Sorry for that!\n"
-                       "Degree 3 or more is not availiable due to insufficient data"));
     run_bottom();
   }
 }
 
-template <int dim, int spacedim>
-void Heart<dim,spacedim>::operator ()(unsigned heartstep){
+//template <int dim, int spacedim>
+//void Heart<dim,spacedim>::operator ()(unsigned heartstep){
   // set start vector = ...
   // make sure that we operate always on start_vector, startvector+3
-}
+//}
 
 
 template <int dim, int spacedim>
@@ -70,6 +67,7 @@ template <int dim, int spacedim>
 void Heart<dim,spacedim>::reinit_data()
 {
   std::string filename;
+  // reading the correct data file
   if (side)
   {
     filename = "../source/side_boundary.txt";
@@ -79,97 +77,35 @@ void Heart<dim,spacedim>::reinit_data()
     filename =  "../source/bottom_boundary.txt";
   }
   std::fstream in (filename);
-  std::string first;
-  std::string second;
-  std::string third;
+  std::string coord;
   int n_dofs = dof_handler.n_dofs();
-  // TODO: 
-  // -jump in line heartstep-1
-  // -read line heartstep-1 and heartstep
-  if (heartstep==0)
-  {
-    in >> second;
-    in >> third;
-    //std::getline(in,second);
-    for (int i = 1; i < 98; ++i)
-    {
-      std::getline(in,first);
-    }
-    in >> first;
-  }
-  else if (heartstep == 99)
-  {
-    in >> third;
-    for (int i = 1; i < 98; ++i)
-    {
-      std::getline(in,first);
-    }
-    in >> first;
-    in >> second;
-  }
-  else
-  {
-    for (int i = 0; i < heartstep-1; ++i)
-    {
-      std::getline(in,first);
-    }
-    in >> first;
-    in >> second;
-    in >> third;
-    //std::getline(in,second);
-  }
-  // -split into 3675 or 363 pieces
-  std::vector<std::vector<std::string> > splitted (3);
-  
-  boost::split(splitted[0], first, boost::is_any_of(";") );
-  boost::split(splitted[1], second, boost::is_any_of(";") );
-  boost::split(splitted[2], third, boost::is_any_of(";") );
-  //std::cout << "size = " << splitted[0].size() << std::endl;
-  for (int line = 0; line < 3; ++line)    
-  {
-    solution[line].reinit(n_dofs);
 
-    // -write into solution[0] and solution[1]
+  for (int line = 0; line < 100; ++line)
+  {
+    std::getline(in,coord);
+
+    // split into 3675 (side) or 363 (bottom) pieces
+    std::vector<std::string> splitted;
+    boost::split(splitted, coord, boost::is_any_of(";") );
+
+    // write into solution
+    solution[line].reinit(n_dofs);
     for (int column = 0; column < n_dofs; ++column)
     {
-      solution[line][column] = std::stod(splitted[line][column]);
-      //std::cout << "solution[" << line << "][" << column << "] = value " << solution[line][column] << std::endl;
+      solution[line][column] = std::stod(splitted[column]);
     }
   }
-
 }
 
 template <int dim, int spacedim>
 Point<spacedim> Heart<dim,spacedim>::push_forward(const Point<dim> chartpoint, 
                                                   const int timestep) const
 {
-  
+
   dealii::Functions::FEFieldFunction<dim, DoFHandler<dim>, Vector<double> > fe_field(dof_handler, solution[timestep]);
   Vector<double> wert (spacedim);
   fe_field.vector_value (chartpoint, wert);
 
-/* this is what happens inside the FEFieldFunction :)
-  auto cell = GridTools::find_active_cell_around_point (dof_handler,
-                                                        chartpoint); 
-  // identifying vertex orientation
-  // redundance for readability !
-  Point<2> lower_left  ( cell->vertex(0)[0], cell->vertex(0)[1] );
-  Point<2> lower_right ( cell->vertex(1)[0], cell->vertex(1)[1] );
-  Point<2> upper_left  ( cell->vertex(2)[0], cell->vertex(2)[1] );
-
-  Point<2> scaled_point ( (chartpoint[0]  - lower_left[0])/ 
-                          (lower_right[0] - lower_left[0])    ,
-                          (chartpoint[1]  - lower_left[1])/ 
-                          (upper_left[1]  - lower_left[1])    );
-  // initializing quadrature by scaled point
-  Quadrature<dim> quad(scaled_point);
-  FEValues<dim> fe_values(fe, quad, update_values);
-  fe_values.reinit (cell);
-
-  std::vector<Vector<double> > wert (quad.size(),
-                                     Vector<double>(spacedim));
-  fe_values.get_function_values(solution[timestep], wert);
-*/
   return Point<spacedim> (wert[0], wert[1], wert[2]);
 
 }

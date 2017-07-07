@@ -56,17 +56,152 @@ public:
   virtual void connect_to_signals() const
   {
     auto &signals = this->get_signals();
-
-    signals.postprocess_newly_created_triangulation.connect(
-      [&,this](Triangulation<dim> &tria)
+    disable_heart = this->get_disable_heart_bool();
+    if(~disable_heart)
     {
-      int index = (dim==2)? 1:0;
-      Tensor<1, dim> shift_vec;
-      shift_vec[index] = -1.318;
-      GridTools::shift(shift_vec, tria);
-    }
-    );
+      signals.postprocess_newly_created_triangulation.connect(
+        [&,this](Triangulation<dim> &tria)
+      {
+        int index = (dim==2)? 1:0;
+        Tensor<1, dim> shift_vec;
+        shift_vec[index] = -1.318;
+        GridTools::shift(shift_vec, tria);
+      }
+      );
+     
+      signals.update_constraint_matrices.connect(
+        [&,this](std::vector<std::shared_ptr<dealii::ConstraintMatrix> > &constraints, ConstraintMatrix &constraints_dot) 
+      {
+        auto &dof= this->get_dof_handler();
+        auto &fe = this->get_fe();
 
+        FEValuesExtractors::Vector displacements (0);
+        FEValuesExtractors::Vector velocities (dim);
+        ComponentMask displacement_mask = fe.component_mask (displacements);
+        ComponentMask velocity_mask = fe.component_mask (velocities);
+
+        // in 3D:
+        // displacement_mask = [1 1 1 0 0 0 0]
+        // velocity_mask     = [0 0 0 1 1 1 0]
+      
+        double timestep = this->get_current_time();
+        double dt = this->get_timestep();
+
+        // if timestep == nan workaround
+        if (timestep != timestep)
+        {
+          timestep = 0;
+        }
+        if (dt != dt) {
+          dt = 1;
+        }
+        // set d_dot to zero when the reference geometry is 
+        // transformed to the heart geometry in the first step.
+        if (timestep == dt)
+        {      
+          // type LAC::VectorType
+          auto &solution_dot = const_cast<typename LAC::VectorType&>(this->get_solution_dot());
+          //std::cout << "size: " << solution_dot.size() << std::endl;
+          solution_dot.block(0) = 0;
+        }
+
+        // dirichlet BC for d 
+        if (dim==2)
+        {
+          // bottom face
+          heart_boundary_values(2,timestep);
+          VectorTools::interpolate_boundary_values (dof,
+                                                    2,
+                                                    heart_boundary_values,
+                                                    *constraints[0],
+                                                    displacement_mask);
+          // left hull
+          heart_boundary_values(0,timestep);
+          VectorTools::interpolate_boundary_values (dof,
+                                                    0,
+                                                    heart_boundary_values,
+                                                    *constraints[0],
+                                                    displacement_mask);
+          // right hull
+          heart_boundary_values(1,timestep);
+          VectorTools::interpolate_boundary_values (dof,
+                                                    1,
+                                                    heart_boundary_values,
+                                                    *constraints[0],
+                                                    displacement_mask);
+          // top face
+          heart_boundary_values(3,timestep);
+          VectorTools::interpolate_boundary_values (dof,
+                                                    3,
+                                                    heart_boundary_values,
+                                                    *constraints[0],
+                                                    displacement_mask);
+        }
+        else
+        {
+          // bottom face
+          heart_boundary_values(1,timestep);
+          VectorTools::interpolate_boundary_values (dof,
+                                                    1,
+                                                    heart_boundary_values,
+                                                    *constraints[0],
+                                                    displacement_mask);
+          // hull
+          heart_boundary_values(0,timestep);
+          VectorTools::interpolate_boundary_values (dof,
+                                                    0,
+                                                    heart_boundary_values,
+                                                    *constraints[0],
+                                                    displacement_mask);
+          // top face
+          heart_boundary_values(2),
+          VectorTools::interpolate_boundary_values (dof,
+                                                    2,
+                                                    heart_boundary_values,
+                                                    *constraints[0],
+                                                    displacement_mask);
+        }
+
+        int n_faces = (dim==2)? 3 : 2;
+
+        if(timestep < 0.005)  // 0.005 is the time of one heart interval
+        {
+          // time derivatives of dirichlet BC for d
+          for (int i = 0; i < n_faces; ++i)
+          { 
+            VectorTools::interpolate_boundary_values (dof,
+                                                      i,
+                                                      ZeroFunction<dim>(2*dim+1),
+                                                      constraints_dot,
+                                                      displacement_mask);
+          }
+        }
+        else
+        {
+          // time derivatives of dirichlet BC for d
+          for (int j = 0; j < n_faces; ++j)
+          {
+            heart_boundary_values(j, timestep, true);
+            VectorTools::interpolate_boundary_values (dof,
+                                                      j,
+                                                      heart_boundary_values,
+                                                      constraints_dot,
+                                                      displacement_mask);
+          }
+          // BC for u
+          for (int j = 0; j < n_faces; ++j)
+          {
+            heart_boundary_values(j, timestep, true);
+            VectorTools::interpolate_boundary_values (dof,
+                                                      j,
+                                                      heart_boundary_values,
+                                                      *constraints[0],
+                                                      velocity_mask);
+          }
+        }
+      }
+      );
+    }
     signals.begin_make_grid_fe.connect(
       [&,this]()
     {
@@ -80,144 +215,14 @@ public:
       [&,this]()
     {
       double time = this->get_current_time();
-      if (time > 0.005)
+      if (time > 0.005 && std::is_same<LAC, LATrilinos>::value )
         iterations_last_step = this->get_solver_control()->last_step(); 
       else 
         iterations_last_step = 0;     
     }
     );
-
-    signals.update_constraint_matrices.connect(
-      [&,this](std::vector<std::shared_ptr<dealii::ConstraintMatrix> > &constraints, ConstraintMatrix &constraints_dot) 
-    {
-      auto &dof=this->get_dof_handler();
-      auto &fe =this->get_fe();
-
-      FEValuesExtractors::Vector displacements (0);
-      FEValuesExtractors::Vector velocities (dim);
-      ComponentMask displacement_mask = fe.component_mask (displacements);
-      ComponentMask velocity_mask = fe.component_mask (velocities);
-
-      // in 3D:
-      // displacement_mask = [1 1 1 0 0 0 0]
-      // velocity_mask     = [0 0 0 1 1 1 0]
-      
-      double timestep = this->get_current_time();
-      double dt = this->get_timestep();
-
-      //std::cout << "timestep " << timestep << std::endl;
-      //std::cout << "dt " << dt << std::endl;
-      // if timestep == nan
-      if (timestep != timestep)
-      {
-        timestep = 0;
-      }
-      if (dt != dt) {
-          dt = 1;
-      }
-
-
-      // dirichlet BC for d 
-      if (dim==2)
-      {
-        // bottom face
-        heart_boundary_values(2,timestep,dt,false,2);
-        VectorTools::interpolate_boundary_values (dof,
-                                                  2,
-                                                  heart_boundary_values,
-                                                  *constraints[0],
-                                                  displacement_mask);
-        // left hull
-        heart_boundary_values(0,timestep,dt,true,4);
-        VectorTools::interpolate_boundary_values (dof,
-                                                  0,
-                                                  heart_boundary_values,
-                                                  *constraints[0],
-                                                  displacement_mask);
-        // right hull
-        heart_boundary_values(1,timestep,dt,true,4);
-        VectorTools::interpolate_boundary_values (dof,
-                                                  1,
-                                                  heart_boundary_values,
-                                                  *constraints[0],
-                                                  displacement_mask);
-        // top face
-        heart_boundary_values(3,timestep,dt,true,4);
-        VectorTools::interpolate_boundary_values (dof,
-                                                  3,
-                                                  heart_boundary_values,
-                                                  *constraints[0],
-                                                  displacement_mask);
-      }
-      else
-      {
-        // bottom face
-        heart_boundary_values(1,timestep,dt,false,2);
-        VectorTools::interpolate_boundary_values (dof,
-                                                  1,
-                                                  heart_boundary_values,
-                                                  *constraints[0],
-                                                  displacement_mask);
-        // hull
-        heart_boundary_values(0,timestep,dt,true,4);
-        VectorTools::interpolate_boundary_values (dof,
-                                                  0,
-                                                  heart_boundary_values,
-                                                  *constraints[0],
-                                                  displacement_mask);
-        // top face
-        heart_boundary_values(2),
-        VectorTools::interpolate_boundary_values (dof,
-                                                  2,
-                                                  heart_boundary_values,
-                                                  *constraints[0],
-                                                  displacement_mask);
-      }
-
-      int n_faces = (dim==2)? 3 : 2;
-      Point<3> degrees (2, 4, 4); 
-      Point<3> bools (false, true, true);
-
-      if(timestep < 0.005)  // 0.005 is the time of one heart interval
-      {
-        // time derivatives of dirichlet BC for d
-        for (int i = 0; i < n_faces; ++i)
-        { 
-          VectorTools::interpolate_boundary_values (dof,
-                                                    i,
-                                                    ZeroFunction<dim>(2*dim+1),
-                                                    constraints_dot,
-                                                    displacement_mask);
-        }
-      }
-      else
-      {
-        // time derivatives of dirichlet BC for d
-        for (int j = 0; j < n_faces; ++j)
-        {
-          heart_boundary_values(j, timestep, dt, bools(n_faces-1-j), degrees(n_faces-1-j), true);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    j,
-                                                    heart_boundary_values,
-                                                    constraints_dot,
-                                                    displacement_mask);
-        }
-        // BC for u
-        for (int j = 0; j < n_faces; ++j)
-        {
-          heart_boundary_values(j, timestep, dt, bools(n_faces-1-j), degrees(n_faces-1-j), true);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    j,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    velocity_mask);
-        }
-      }
-    }
-    );
   } 
   
-
   //void
   //set_matrix_couplings(std::vector<std::string> &couplings) const;
 
@@ -226,10 +231,12 @@ private:
 // Physical parameter
   double nu;
   double rho;
+
   mutable unsigned int iterations_last_step;
   mutable unsigned int max_iterations_adaptive;
   mutable bool adaptive_preconditioners_on;
   mutable bool use_explicit_solutions;
+  mutable bool disable_heart;
 
   bool Mp_use_inverse_operator;
   bool AMG_u_use_inverse_operator;
@@ -339,6 +346,7 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
   ResidualType et = 0;
   double dummy = 0.0;
 
+/*
   double h = cell->diameter();
 
   for (unsigned int face=0; face < GeometryInfo<dim>::faces_per_cell; ++face)
@@ -380,7 +388,7 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
       break;
     }
   } // end loop over faces
-
+*/
   this->reinit (et, cell, fe_cache);
 
   // displacement:
@@ -394,7 +402,7 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
   // velocity:
   auto &us = fe_cache.get_values( "solution", "u", velocity, et);
   auto &grad_us = fe_cache.get_gradients( "solution", "grad_u", velocity, et);
-  auto &div_us = fe_cache.get_divergences( "solution", "div_u", velocity, et);
+  //auto &div_us = fe_cache.get_divergences( "solution", "div_u", velocity, et);
   auto &sym_grad_us = fe_cache.get_symmetric_gradients( "solution", "u", velocity, et);
   auto &us_dot = fe_cache.get_values( "solution_dot", "u_dot", velocity, et);
 
@@ -414,7 +422,7 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
   for (unsigned int quad=0; quad<n_quad_points; ++quad)
   {
     // velocity:
-    const ResidualType &div_u = div_us[quad];
+    //const ResidualType &div_u = div_us[quad];
     const Tensor<1, dim, ResidualType> &u_dot = us_dot[quad];
     const Tensor<2, dim, ResidualType> &grad_u = grad_us[quad];
     const Tensor <2, dim, ResidualType> &sym_grad_u = sym_grad_us[quad];
@@ -454,8 +462,8 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
     for (unsigned int i = 0; i<dim; ++i)
       p_Id[i][i] = p;
 
-    ResidualType my_rho = rho;
-    const Tensor <2, dim, ResidualType> sigma = - p_Id + my_rho * ( nu* sym_grad_u * F_inv + ( Ft_inv * transpose(nu* sym_grad_u) ) ) ;
+    //ResidualType my_rho = rho;
+    const Tensor <2, dim, ResidualType> sigma = - p_Id + nu*(sym_grad_u * F_inv + ( Ft_inv * transpose(sym_grad_u) ) ) ;
 
     for (unsigned int i=0; i<residual[0].size(); ++i)
     {
@@ -464,7 +472,7 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
       // velocity:
       auto u_test = fev[velocity].value(i,quad);
       auto grad_u_test = fev[velocity].gradient(i,quad);
-      auto div_u_test = fev[velocity].divergence(i,quad);
+      //auto div_u_test = fev[velocity].divergence(i,quad);
 
       // displacement:
       auto grad_d_test = fev[displacement].gradient(i,quad);
@@ -474,6 +482,7 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
 
       residual[1][i] += ( (1./nu)*p*p_test )*JxW[quad];
 
+      // you need to double check this!!
       residual[0][i] +=
         (
           // time derivative term
@@ -482,10 +491,13 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
           + rho*scalar_product( grad_u * ( F_inv * ( u_old - d_dot ) ) * J_ale , u_test )
 
           + scalar_product( J_ale * sigma * Ft_inv, grad_u_test )
+          // old parts
+          //- div_u * p_test
+          //- p * div_u_test
+   
           // divergence free constriant
-          - div_u * p_test
-          // pressure term
-          - p * div_u_test
+          - trace(grad_u *F_inv) * J_ale *p_test
+          
           // Impose harmony of d and u=d_dot
           + scalar_product( grad_d , grad_d_test )
         )*JxW[quad];
@@ -528,7 +540,8 @@ ALENavierStokes<dim,spacedim,LAC>::compute_system_operators(
       AMG_u.initialize_preconditioner<dim, spacedim>( matrices[0]->block(1,1), fe, dh);
       jac_M.initialize_preconditioner<>(matrices[1]->block(2,2));
       counter++;
-      std::cout << "precons reinitialized!" << std::endl;
+      // make verbose with pcout
+      // std::cout << "precons reinitialized!" << std::endl;
     }
   } 
   else
@@ -536,7 +549,6 @@ ALENavierStokes<dim,spacedim,LAC>::compute_system_operators(
       AMG_d.initialize_preconditioner<dim, spacedim>( matrices[0]->block(0,0), fe, dh);
       AMG_u.initialize_preconditioner<dim, spacedim>( matrices[0]->block(1,1), fe, dh);
       jac_M.initialize_preconditioner<>(matrices[1]->block(2,2));
-      //std::cout << "gettig reinitialized always!" << std::endl;
   }
 ////////////////////////////////////////////////////////////////////////////
 // SYSTEM MATRIX:

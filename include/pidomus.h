@@ -463,6 +463,12 @@ private:
   bool use_explicit_solutions;
 
   /**
+   * Enable to disable the heart boundary conditions specified in the code.  
+   */
+
+  bool disable_heart;
+
+  /**
    * Solver tolerance for the equation:
    * \f[ \mathcal{J}(F)[u] = R[u] \f]
    */

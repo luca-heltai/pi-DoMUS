@@ -282,7 +282,7 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
 
       ResidualType my_rho = rho;
       const Tensor <2, dim, ResidualType> sigma =
-        - Id + my_rho * ( nu* sym_grad_u * F_inv + ( Ft_inv * transpose(nu* sym_grad_u) ) ) ;
+        - Id + ( nu* sym_grad_u * F_inv + ( Ft_inv * transpose(nu* sym_grad_u) ) ) ;
 
       for (unsigned int i=0; i<residual[0].size(); ++i)
         {

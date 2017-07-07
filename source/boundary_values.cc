@@ -89,7 +89,7 @@ template <int dim>
 void
 BoundaryValues<dim>::get_heartdelta (const Point<dim> point,
                                      Vector<double>   &values,
-                                     int heartstep) const
+                                     int step) const
 {
   Point<3> rotated_p;
   Point<3> p;
@@ -104,7 +104,7 @@ BoundaryValues<dim>::get_heartdelta (const Point<dim> point,
   {
     rotation_offset = -PI/4;
     // rotate the 2D slice by this angle
-    rotate_slice = 0;
+    rotate_slice = -PI/4;
     p = artificial_p;
   }
 
@@ -128,6 +128,7 @@ BoundaryValues<dim>::get_heartdelta (const Point<dim> point,
   else if (color == 1)    //////////////////////////////// bottom face
   {
       Point<2> two_dim_pnt (p(2), p(1));
+      //std::cout << "point on bottom boundary: (" << p(2) << ", " << p(1) << ")" << std::endl;
 
       if (dim==2)
       {
@@ -136,7 +137,7 @@ BoundaryValues<dim>::get_heartdelta (const Point<dim> point,
         two_dim_pnt(1) = rotated_p(1);
       }
       //get heart boundary point
-      Point<3> heart_p = heart_bottom.push_forward (two_dim_pnt, heartstep);
+      Point<3> heart_p = heart_bottom.push_forward (two_dim_pnt, step);
       swap_coord(heart_p);
 
       if (dim==2)
@@ -160,7 +161,7 @@ BoundaryValues<dim>::get_heartdelta (const Point<dim> point,
       Point<2> polar_pnt (phi, h);
 
       //get heart boundary point
-      Point<3> heart_p = heart_side.push_forward (polar_pnt, heartstep);
+      Point<3> heart_p = heart_side.push_forward (polar_pnt, step);
       swap_coord(heart_p);
 
       if (dim==2)
@@ -194,9 +195,13 @@ BoundaryValues<dim>::get_values (const Point<dim> &p,
 
     Point<1> substep ( fmod(timestep, heartinterval)/heartinterval );
 
-    BoundaryValues<dim>::get_heartdelta(p, u[0], 0);
-    BoundaryValues<dim>::get_heartdelta(p, u[1], 1);
-    BoundaryValues<dim>::get_heartdelta(p, u[2], 2);
+    int last = (heartstep==0)? 99:heartstep-1;
+    int current = heartstep;
+    int next = (heartstep==99)? 0:heartstep+1;
+
+    BoundaryValues<dim>::get_heartdelta(p, u[0], last);
+    BoundaryValues<dim>::get_heartdelta(p, u[1], current);
+    BoundaryValues<dim>::get_heartdelta(p, u[2], next);
     
     int counter = 0;
     for (int line = 0; line < 3; ++line)
@@ -238,18 +243,22 @@ BoundaryValues<dim>::get_values_dt (const Point<dim> &p,
     Vector<double> delta_v(dim);       // v1 - v0
     double substep = fmod(timestep, heartinterval)/heartinterval;
 
-    BoundaryValues<dim>::get_heartdelta(p, u_minus, 0);
-    BoundaryValues<dim>::get_heartdelta(p, u, 1);
-    BoundaryValues<dim>::get_heartdelta(p, u_plus, 2);
+    int last = (heartstep==0)? 99:heartstep-1;
+    int current = heartstep;
+    int next = (heartstep==99)? 0:heartstep+1;
+
+    BoundaryValues<dim>::get_heartdelta(p, u_minus, last);
+    BoundaryValues<dim>::get_heartdelta(p, u, current);
+    BoundaryValues<dim>::get_heartdelta(p, u_plus, next);
 
     // (u_t - u_t-1) / h
     v0 = u;
     v0 -= u_minus;
-    v0 /= heartinterval*100;
+    v0 /= heartinterval;
     // (u_t+1 - u_t) / h
     v1 = u_plus;
     v1 -= u;
-    v1 /= heartinterval*100;
+    v1 /= heartinterval;
     // calculate & scale delta_v
     delta_v = v1;
     delta_v -= v0;
@@ -257,8 +266,8 @@ BoundaryValues<dim>::get_values_dt (const Point<dim> &p,
 
     v0 += delta_v; // delta_u = delta_u*substep
 
-    // scaling to achieve convergence
-    //v0 *= 0.1;
+    // scaling to get metric system 
+    //v0 *= 0.01;
     
     for (int i = 0; i < 2*dim; ++i)
     {

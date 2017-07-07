@@ -190,6 +190,13 @@ SimulatorAccess<dim,spacedim,LAC>::get_explicit_solution_bool() const
   return simulator->use_explicit_solutions;
 }
 
+template <int dim, int spacedim, typename LAC>
+const bool &
+SimulatorAccess<dim,spacedim,LAC>::get_disable_heart_bool() const
+{
+  return simulator->disable_heart;
+}
+
 template class SimulatorAccess<2, 2, LATrilinos>;
 template class SimulatorAccess<2, 3, LATrilinos>;
 template class SimulatorAccess<3, 3, LATrilinos>;

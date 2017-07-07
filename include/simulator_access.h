@@ -216,8 +216,20 @@ public:
   const int &
   get_max_iterations_adaptive () const;
 
+  /**
+   * Return a reference to the bool to decide whether 
+   * explicit or implicit solutions are used.
+   */
+  
   const bool &
   get_explicit_solution_bool () const;
+
+  /**
+   * Return a reference to the bool to decide whether the heart BC are used or not.
+   */
+
+  const bool &
+  get_disable_heart_bool () const;
 
   /** @} */
 

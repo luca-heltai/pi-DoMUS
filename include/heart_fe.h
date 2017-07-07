@@ -13,10 +13,10 @@ class Heart
 {
 public:
   Heart ();
-  Heart (bool, const int);
+  Heart (bool);
   Point<spacedim> push_forward (const Point<dim>, const int) const;
 
-  void operator()(unsigned int);
+  //void operator()(unsigned int);
 
 private:
   void reinit_data ();
@@ -24,10 +24,10 @@ private:
   void run_side ();
   void run_bottom ();
 
-  Triangulation<dim>		   		triangulation;
-  FESystem<dim> 			       	fe;
-  DoFHandler<dim>			      	dof_handler;
-  std::vector<Vector<double> >      solution;
+  Triangulation<dim>		   		   triangulation;
+  FESystem<dim> 			       	   fe;
+  DoFHandler<dim>			      	   dof_handler;
+  std::vector<Vector<double> >   solution;
 
   bool side;
   int heartstep;

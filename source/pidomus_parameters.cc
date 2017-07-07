@@ -55,6 +55,12 @@ declare_parameters (ParameterHandler &prm)
                   Patterns::Bool());
 
   add_parameter(  prm,
+                  &disable_heart,
+                  "Disable heart BC",
+                  "true",
+                  Patterns::Bool());
+
+  add_parameter(  prm,
                   &use_explicit_solutions,
                   "Use explicit solutions",
                   "true",

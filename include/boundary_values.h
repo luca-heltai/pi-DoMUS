@@ -17,9 +17,9 @@ class BoundaryValues : public Function<dim>
 public:
   BoundaryValues()  :
   Function<dim>(2*dim+1),
+    heart_side(true),
+    heart_bottom(false),
     fe(FE_Q<1>(2), dim),
-    heart_side(true, 2),
-    heart_bottom(false, 4),
     dof_handler(triangulation)
   {
     setup_system();
@@ -33,20 +33,12 @@ public:
 
   void operator() (int color,
                    double timestep,
-                   double dt,
-                   bool side,
-                   int degree,
                    bool derivative=false)
   {
     this->color = (dim==2)?color-1:color;
     this->timestep =timestep;
-    this->dt = dt;
     this->heartstep = timestep/heartinterval;
     this->derivative = derivative;
-    if(side)
-      heart_side(heartstep);
-    else
-      heart_bottom(heartstep);
   }
   
   virtual void vector_value (const Point<dim> &p,

@@ -6,8 +6,8 @@ subsection ALE Navier Stokes Interface
   set Blocking of the finite element   = d,d,u,u,p
   set Finite element space             = FESystem[FE_Q(2)^d-FE_Q(2)^d-FE_Q(1)]
   set Invert Mp using inverse operator = false
-  set nu [Pa s]                        = 3.5e-3
-  set rho [kg m^-d]                    = 1.06
+  set nu [Pa s]                        = 0.05
+  set rho [kg m^-d]                    = 1
 end
 subsection AMG for d
   set Aggregation threshold              = 10
@@ -36,10 +36,16 @@ subsection AMG for u
   set w-cycle                            = false
 end
 subsection Dirichlet boundary conditions
-  set IDs and component masks = 
-  set IDs and expressions     = 
+  set IDs and component masks = 0=d % 1=d % 2=d
+  set IDs and expressions     = 0=-a*(y^2-1)*sin(t*v);0;0;0;0; % 1=a*(y^2-1)*sin(t*v);0;0;0;0; % 2=0;-a*(x^2-0.5)*sin(t*v);0;0;0;
   set Known component names   = d,d,u,u,p
-  set Used constants          = 
+  set Used constants          = a=0.05, v=16
+end
+subsection Time derivative of Dirichlet boundary conditions
+  set IDs and component masks = 0=d % 1=d % 2=d
+  set IDs and expressions     = 0=-a*(y^2-1)*v*cos(t*v);0;0;0;0; % 1=a*(y^2-1)*v*cos(t*v);0;0;0;0; % 2=0;-a*(x^2-0.5)*v*cos(t*v);0;0;0;
+  set Known component names   = d,d,u,u,p
+  set Used constants          = a=0.05, v=16
 end
 subsection Domain
   set Colorize                      = true
@@ -50,14 +56,14 @@ subsection Domain
   set Input grid file name          = 
   set Manifold descriptors          = 
   set Mesh smoothing alogrithm      = none
-  set Optional Point<spacedim> 1    = -1.3858,-3.0016
-  set Optional Point<spacedim> 2    = 1.3858,3.0016
+  set Optional Point<spacedim> 1    = 0.5,1
+  set Optional Point<spacedim> 2    = -0.5,-1
   set Optional double 1             = 1.0
   set Optional double 2             = 0.5
   set Optional double 3             = 1.5
   set Optional int 1                = 1
   set Optional int 2                = 2
-  set Optional vector of dim int    = 1,3
+  set Optional vector of dim int    = 1,1
   set Output grid file name         = 
 end
 subsection Error Tables
@@ -89,8 +95,8 @@ subsection Forcing terms
   set Used constants          = 
 end
 subsection IMEX Parameters
-  set Absolute error tolerance                     = 1e-4
-  set Final time                                   = 0.495
+  set Absolute error tolerance                     = 1e-5
+  set Final time                                   = 0.25
   set Initial time                                 = 0.0
   set Intervals between outputs                    = 1
   set Maximum number of inner nonlinear iterations = 15
@@ -98,8 +104,8 @@ subsection IMEX Parameters
   set Method used                                  = fixed_alpha
   set Newton relaxation parameter                  = 1.0
   set Number of elements in backtracking sequence  = 5
-  set Print useful informations                    = false
-  set Relative error tolerance                     = 1e-4
+  set Print useful informations                    = true
+  set Relative error tolerance                     = 1e-8
   set Step size                                    = 1e-3
   set Update continuously Jacobian                 = true
   set Use the KINSOL solver                        = true
@@ -122,10 +128,10 @@ end
 subsection KINSOL for IMEX
   set Level of verbosity of the KINSOL solver            = 0
   set Maximum number of iteration before Jacobian update = 50
-  set Maximum number of iterations                       = 100
-  set Step tolerance                                     = 1e-4
+  set Maximum number of iterations                       = 100000
+  set Step tolerance                                     = 1e-9
   set Strategy                                           = newton
-  set Tolerance for residuals                            = 1e-4
+  set Tolerance for residuals                            = 1e-9
   set Use internal KINSOL direct solver                  = false
 end
 subsection Neumann boundary conditions
@@ -150,26 +156,23 @@ subsection Refinement
   set Refinement strategy                    = fraction
   set Top fraction                           = 0.3
 end
-subsection Time derivative of Dirichlet boundary conditions
-  set IDs and component masks = 
-  set IDs and expressions     = 
-  set Known component names   = d,d,u,u,p
-  set Used constants          = 
-end
 subsection Zero average constraints
   set Known component names        = d,d,u,u,p
   set Zero average on boundary     = 
   set Zero average on whole domain = 
 end
 subsection piDoMUS
-  set Adaptive refinement                            = false
-  set Enable adaptive preconditioners                = true
+  ## new parameters
+  set Disable heart BC                               = true
+  set Enable adaptive preconditioners                = false
   set Max iterations before reinit preconditioners   = 14
-  set Use explicit solutions                         = true
+  set Use explicit solutions                         = false
+  ##
+  set Adaptive refinement                            = false
   set Enable finer preconditioner                    = false
-  set Initial global refinement                      = 4
-  set Jacobian solver tolerance                      = 1e-3
-  set Max iterations                                 = 200
+  set Initial global refinement                      = 3
+  set Jacobian solver tolerance                      = 1e-4
+  set Max iterations                                 = 10000
   set Max iterations finer prec.                     = 0
   set Max tmp vectors                                = 30
   set Max tmp vectors for finer system               = 50

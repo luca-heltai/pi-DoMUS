@@ -92,6 +92,7 @@ int main (int argc, char *argv[])
   Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
                                                       n_threads == 0 ? numbers::invalid_unsigned_int  : n_threads);
 
+  PetscPopSignalHandler();
   const MPI_Comm &comm  = MPI_COMM_WORLD;
 
   Teuchos::oblackholestream blackhole;
