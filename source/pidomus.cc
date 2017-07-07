@@ -436,7 +436,7 @@ piDoMUS<dim, spacedim, LAC>::solve_jacobian_system(const typename LAC::VectorTyp
           PrimitiveVectorMemory<typename LAC::VectorType> mem;
 
           solver_control = SP( new SolverControl(solver_iterations, jacobian_solver_tolerance) );
-          
+
           //SolverControl solver_control (solver_iterations,
           //                              jacobian_solver_tolerance);
 

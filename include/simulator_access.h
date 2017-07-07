@@ -217,10 +217,10 @@ public:
   get_max_iterations_adaptive () const;
 
   /**
-   * Return a reference to the bool to decide whether 
+   * Return a reference to the bool to decide whether
    * explicit or implicit solutions are used.
    */
-  
+
   const bool &
   get_explicit_solution_bool () const;
 

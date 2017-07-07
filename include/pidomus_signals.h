@@ -3,9 +3,6 @@
 
 #include "simulator_access.h"
 
-template <int dim, int spacedim>
-class Triangulation;
-
 /**
  * A class that collects the definition of signals that can be triggered
  * at different points in a computation. A signal is in essence an event

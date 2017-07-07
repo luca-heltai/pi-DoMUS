@@ -451,21 +451,21 @@ private:
   bool use_direct_solver;
 
   /**
-   * Enable to reinitialize only at the beginning and when the number of last 
+   * Enable to reinitialize only at the beginning and when the number of last
    * iterations is larger than max_iterations.
    */
   bool enable_adaptive_preconditioners;
   int max_iterations_adaptive;
 
   /**
-   * Enable to use the solutions for the displacement explicitly  
+   * Enable to use the solutions for the displacement explicitly
    * from the last time step.
    */
 
   bool use_explicit_solutions;
 
   /**
-   * Enable to disable the heart boundary conditions specified in the code.  
+   * Enable to disable the heart boundary conditions specified in the code.
    */
 
   bool disable_heart;
