@@ -1,7 +1,7 @@
-#include "interfaces/ALE_signal.h"
-#include "pidomus.h"
+#include <ALE_signal.h>
+#include <pidomus.h>
 
-#include "deal.II/base/numbers.h"
+#include <deal.II/base/numbers.h>
 
 #include "Teuchos_CommandLineProcessor.hpp"
 #include "Teuchos_GlobalMPISession.hpp"
@@ -92,7 +92,9 @@ int main (int argc, char *argv[])
   Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
                                                       n_threads == 0 ? numbers::invalid_unsigned_int  : n_threads);
 
+#ifdef DEAL_II_WITH_PETSC
   PetscPopSignalHandler();
+#endif
   const MPI_Comm &comm  = MPI_COMM_WORLD;
 
   Teuchos::oblackholestream blackhole;

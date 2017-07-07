@@ -10,8 +10,8 @@
 #ifndef _pidomus_ALE_navier_stokes_h_
 #define _pidomus_ALE_navier_stokes_h_
 
-#include "pde_system_interface.h"
-#include "../boundary_values.h"
+#include <pde_system_interface.h>
+#include <boundary_values.h>
 
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/solver_gmres.h>
@@ -31,7 +31,7 @@ class ALENavierStokes
 {
 
 public:
-  ~ALENavierStokes () {};
+  virtual ~ALENavierStokes () {}
   ALENavierStokes ();
 
   void declare_parameters (ParameterHandler &prm);
@@ -60,12 +60,12 @@ public:
     if(~disable_heart)
     {
       signals.postprocess_newly_created_triangulation.connect(
-        [&,this](Triangulation<dim> &tria)
+        [&,this](Triangulation<dim,spacedim> *tria)
       {
         int index = (dim==2)? 1:0;
         Tensor<1, dim> shift_vec;
         shift_vec[index] = -1.318;
-        GridTools::shift(shift_vec, tria);
+        GridTools::shift(shift_vec, *tria);
       }
       );
      

@@ -6,7 +6,7 @@
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_system.h>
-#include "heart_fe.h"
+#include <heart_fe.h>
 #include <cmath>
 
 using namespace dealii;
