@@ -32,11 +32,14 @@ def main(args=None):
     p = parse_expr(p, local_dict=local_dict)
 
     v = [0, 0, -pre_curl.diff(y), pre_curl.diff(x)]
+    vt = [vi.diff(t) for vi in v]
 
-    f_navier = [v[2].diff(t) + (v[2])*v[2].diff(x) + (v[3])*v[2].diff(y), v[3].diff(t) + (v[2])*v[3].diff(x) + (v[3])*v[3].diff(y)]
+    f_navier = [0, 0, v[2].diff(t) + (v[2])*v[2].diff(x) + (v[3])*v[2].diff(y), v[3].diff(t) + (v[2])*v[3].diff(x) + (v[3])*v[3].diff(y)]
     f_stokes = [0, 0, -v[2].diff(x, 2) - v[2].diff(y, 2) + p.diff(x), -v[3].diff(x, 2) - v[3].diff(y, 2) + p.diff(y)]
 
-    f = f_navier + f_stokes; 
+    f = []
+    for i in range(len(f_navier)):
+        f += [f_navier[0] + f_stokes[i]] 
     v_str = "subsection Exact solution\n  set Function expression = " + str(v[0]) + "; " + str(v[1]) + "; " + str(v[2]) + "; " + str(v[3]) + "; " + str(p) + "\nend"
     print(v_str.replace("**", "^"))
 
