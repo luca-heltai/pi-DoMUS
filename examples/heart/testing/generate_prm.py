@@ -32,9 +32,9 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
     if len(args) == 0:
-        err = "you need to specify your test:\n"
+        err = "you need to specify your test:\nALL: perform all tests\n"
         for it in range(0,len(testnames)):
-            err += str(it) + ": " + testnames[it] +"\n"
+            err += str(it) + "  : " + testnames[it] +"\n"
         sys.exit(err)
     else:
         i = args[0]
