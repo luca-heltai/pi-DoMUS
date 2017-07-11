@@ -10,7 +10,9 @@ from sympy.parsing.sympy_parser import parse_expr
 def main(args=None):
     """The main routine."""
 
-    pre_curl = ["-((y**2)/2-y)", 
+    pre_d = "0.3*cos(x-0.01*t)"
+
+    pre_v = ["-((y**2)/2-y)", 
                 "-t*((y**2)/2-y)", 
                 "-y**2*(y/3 - 1/2)", 
                 "-t*y**2*(y/3 - 1/2)",
@@ -39,7 +41,7 @@ def main(args=None):
         i = args[0]
         if i == "ALL":
             start = 0
-            end = len(pre_curl)
+            end = len(pre_v)
         else:
             start = int(i)
             end = int(i)+1
@@ -48,26 +50,27 @@ def main(args=None):
     local_dict = {"x": x, "y": y, "z": z, "t": t}
     for i in range(start,end):
 
-        pre_curl[i] = parse_expr(pre_curl[i], local_dict=local_dict)
+        pre_v[i] = parse_expr(pre_v[i], local_dict=local_dict)
+        pre_d = parse_expr(pre_d, local_dict=local_dict)
         p = parse_expr(press, local_dict=local_dict)
         pt = p.diff(t)
 
-        d = [0*p,0*p]
+        d = [-pre_d.diff(y), pre_d.diff(x)]
         dt = [di.diff(t) for di in d]
 
-        v = [-pre_curl[i].diff(y), pre_curl[i].diff(x)]
+        v = [-pre_v[i].diff(y), pre_v[i].diff(x)]
         vt = [vi.diff(t) for vi in v]
 
         print("\nPerforming "+ testnames[i] +
               "\nUsing pattern d, d, u, u, p in \n"+
               "             (" + str(d[0]) + ", " + str(d[1]) + ", " + str(v[0]) + ", " + str(v[1]) + ", " + str(p)+" )\n")
-
-        f_navier = [0, 0, v[0].diff(t) + (v[0])*v[0].diff(x) + (v[1])*v[0].diff(y), v[1].diff(t) + (v[0])*v[1].diff(x) + (v[1])*v[1].diff(y)]
+        f_d      = [-d[0].diff(x, 2) - d[0].diff(y, 2), -d[1].diff(x, 2) - d[1].diff(y, 2), 0, 0]
+        f_navier = [0, 0, v[0].diff(t) + (v[0]-dt[0])*v[0].diff(x) + (v[1]-dt[1])*v[0].diff(y), v[1].diff(t) + (v[0]-dt[0])*v[1].diff(x) + (v[1]-dt[1])*v[1].diff(y)]
         f_stokes = [0, 0, -v[0].diff(x, 2) - v[0].diff(y, 2) + p.diff(x), -v[1].diff(x, 2) - v[1].diff(y, 2) + p.diff(y)]
 
-        f = []
+        f_ale = []
         for j in range(len(f_navier)):
-            f += [f_navier[0] + f_stokes[j]] 
+            f_ale += [f_navier[j] + f_stokes[j] + f_d[j] ] 
 
         v_str = ("subsection Dirichlet boundary conditions\n"   
                 +"  set IDs and component masks = 0=d;u\n"   
@@ -87,7 +90,7 @@ def main(args=None):
                 "subsection Forcing terms\n"   
                 +"  set IDs and component masks = 0=ALL\n"   
                 +"  set IDs and expressions     = 0=" 
-                + str(f[0]) + "; " + str(f[1]) + "; " + str(f[2]) + "; " + str(f[3]) + "; " + "0\n"
+                + str(f_ale[0]) + "; " + str(f_ale[1]) + "; " + str(f_ale[2]) + "; " + str(f_ale[3]) + "; " + "0\n"
                 +"  set Known component names   = d,d,u,u,p\n  set Used constants          = \nend\n" +
                 "subsection Initial solution\n"   
                 +"  set Function expression ="   
@@ -99,7 +102,7 @@ def main(args=None):
                 + str(vt[0].subs(t,0)) + "; " + str(vt[1].subs(t,0)) + "; " + str(pt.subs(t,0)) +  
                 "\nend")
 
-        shutil.copy2('./template.prm', 'ALE_'+ testnames[i]+ '.prm' )
+        shutil.copy2('./template_test.prm', 'ALE_'+ testnames[i]+ '.prm' )
 
         prm = open('ALE_'+ testnames[i]+ '.prm','a+')
         prm.write(v_str.replace("**", "^"))
