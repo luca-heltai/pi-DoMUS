@@ -10,14 +10,14 @@ from sympy.parsing.sympy_parser import parse_expr
 def main(args=None):
     """The main routine."""
 
-    pre_curl = ["(y-1)", 
-                "-t*(0.5*y*y-y)", 
-                "y*(y-1)", 
-                "t*y*(y-1)",
-                "sin(pi*y)", 
-                "sin(2*pi*t)*sin(2*pi*y)",
-                "sin(2*pi*x)*sin(2*pi*y)", 
-                "sin(2*pi*t)*sin(2*pi*x)*sin(2*pi*y)"]   
+    pre_curl = ["-((y**2)/2-y)", 
+                "-t*((y**2)/2-y)", 
+                "-y**2*(y/3 - 1/2)", 
+                "-t*y**2*(y/3 - 1/2)",
+                "(1/pi)*cos(pi*y)", 
+                "sin(2*pi*t)*(1/pi)*cos(pi*y)",
+                "(1/(2*pi))*sin(2*pi*x)*sin(2*pi*y)", 
+                "(1/(2*pi))*sin(2*pi*t)*sin(2*pi*x)*sin(2*pi*y)"]   
     testnames = ["patch_test",
                  "time_dep_patch_test",
                  "rotating_patch_test",
@@ -47,7 +47,6 @@ def main(args=None):
     x, y, z, t = var('x,y,z,t')
     local_dict = {"x": x, "y": y, "z": z, "t": t}
     for i in range(start,end):
-        print("\nPerforming "+ testnames[i] +"\nUsing v = curl(" + pre_curl[i] + " e_z), p = " +press +"\n")
 
         pre_curl[i] = parse_expr(pre_curl[i], local_dict=local_dict)
         p = parse_expr(press, local_dict=local_dict)
@@ -58,6 +57,10 @@ def main(args=None):
 
         v = [-pre_curl[i].diff(y), pre_curl[i].diff(x)]
         vt = [vi.diff(t) for vi in v]
+
+        print("\nPerforming "+ testnames[i] +
+              "\nUsing pattern d, d, u, u, p in \n"+
+              "             (" + str(d[0]) + ", " + str(d[1]) + ", " + str(v[0]) + ", " + str(v[1]) + ", " + str(p)+" )\n")
 
         f_navier = [0, 0, v[0].diff(t) + (v[0])*v[0].diff(x) + (v[1])*v[0].diff(y), v[1].diff(t) + (v[0])*v[1].diff(x) + (v[1])*v[1].diff(y)]
         f_stokes = [0, 0, -v[0].diff(x, 2) - v[0].diff(y, 2) + p.diff(x), -v[1].diff(x, 2) - v[1].diff(y, 2) + p.diff(y)]
@@ -103,16 +106,18 @@ def main(args=None):
         prm.close()
 
         os.system("sed -i 's/xxx/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
+        os.system("sed -i 's/yyy/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
 
         os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
-        os.system("mv error.txt error"+str(i)+".txt")
-    files = glob.glob( 'error*' )
-
+        os.system("mv err_"+testnames[i]+".txt err"+str(i)+"_"+testnames[i]+".txt")
+    files = glob.glob( 'err*' )
+    files.sort()
     with open( 'result.txt', 'w' ) as result:
         for file in files:
-            result.write("\nerrortable\n")
+            result.write("\nerrortable: "+file[5:]+"\n")
             for line in open( file, 'r' ):
                 result.write( line )
 
+    os.system("rm -rf err*")
 if __name__ == "__main__":
     main()
