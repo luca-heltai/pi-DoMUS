@@ -322,8 +322,6 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
                                                             std::accumulate(dofs_per_block.begin(), dofs_per_block.begin() + i + 1, 0)));
   }
 
-  update_functions_and_constraints(current_time);
-
   ScopedLACInitializer initializer(dofs_per_block,
                                    partitioning,
                                    relevant_partitioning,
@@ -331,6 +329,8 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
 
   initializer(solution);
   initializer(solution_dot);
+
+  update_functions_and_constraints(current_time);
 
 
   if (we_are_parallel)
@@ -358,6 +358,7 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
                   interface.get_matrix_coupling(i));
       matrices[i]->reinit(*matrix_sparsities[i]);
     }
+
 
   if (first_run)
     {
@@ -392,7 +393,12 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
       signals.fix_initial_conditions(solution, solution_dot);
       locally_relevant_explicit_solution = solution;
 
+      // Do twice in the first run, in case constraints and or
+      // bc depend on initial condition.
+      update_functions_and_constraints(current_time);
     }
+
+
   signals.end_setup_dofs();
 }
 

@@ -160,6 +160,14 @@ SimulatorAccess<dim,spacedim,LAC>::get_dirichlet_bcs() const
   return simulator->dirichlet_bcs;
 }
 
+
+template <int dim, int spacedim, typename LAC>
+const ParsedDirichletBCs<dim, spacedim> &
+SimulatorAccess<dim,spacedim,LAC>::get_dirichlet_bcs_dot() const
+{
+  return simulator->dirichlet_bcs_dot;
+}
+
 //// new getter functions
 
 template <int dim, int spacedim, typename LAC>

@@ -1,5 +1,5 @@
-#ifndef _pidomus_simulator_acess_h
-#define _pidomus_simulator_acess_h
+#ifndef _pidomus_simulator_access_h
+#define _pidomus_simulator_access_h
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/distributed/tria.h>
@@ -196,6 +196,15 @@ public:
    */
   const ParsedDirichletBCs<dim,spacedim> &
   get_dirichlet_bcs () const;
+
+
+  /**
+   * Return a reference to the ParsedDirichletBCs that stores
+   * the time derivative of the Dirichlet boundary conditions
+   * set in the parameter file.
+   */
+  const ParsedDirichletBCs<dim,spacedim> &
+  get_dirichlet_bcs_dot () const;
 
   /**
    * Return a reference to the boolean, which defines if preconditioners

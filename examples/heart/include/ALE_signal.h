@@ -17,6 +17,8 @@
 #include <deal.II/lac/solver_gmres.h>
  #include <deal.II/grid/grid_tools.h>
 
+#include <deal.II/fe/mapping_q_eulerian.h>
+
 #include <deal2lkit/parsed_mapped_functions.h>
 #include <deal2lkit/parsed_preconditioner/amg.h>
 #include <deal2lkit/parsed_preconditioner/jacobi.h>
@@ -203,6 +205,53 @@ public:
       }
       );
     }
+    else {
+        // Make sure that velocity boundary conditions are applied on the Eulerian domain.
+        // This needs to be differnt w.r.t. the displacement variables, where boundary conditions
+        // are applied on the reference domain.
+
+        signals.update_constraint_matrices.connect(
+          [&,this](std::vector<std::shared_ptr<dealii::ConstraintMatrix> > &constraints, ConstraintMatrix &constraints_dot)
+        {
+          auto &dof= this->get_dof_handler();
+          auto &fe = this->get_fe();
+
+          FEValuesExtractors::Vector velocities (dim);
+          ComponentMask velocity_mask = fe.component_mask (velocities);
+
+          auto &dirichlet_bc = this->get_dirichlet_bcs();
+          auto &dirichlet_bc_dot = this->get_dirichlet_bcs_dot();
+
+          if(dirichlet_bc.get_mapped_ids().size() > 0) {
+              AssertDimension(dirichlet_bc.get_mapped_ids().size(),
+                              dirichlet_bc_dot.get_mapped_ids().size());
+
+              auto boundary_id = dirichlet_bc.get_mapped_ids()[0];
+              AssertDimension(1, dirichlet_bc.get_mapped_ids().size());
+              AssertDimension(boundary_id, dirichlet_bc_dot.get_mapped_ids()[0]);
+
+              auto f = dirichlet_bc.get_mapped_function(boundary_id);
+              auto f_dot = dirichlet_bc_dot.get_mapped_function(boundary_id);
+
+              MappingQEulerian<dim, typename LAC::VectorType> mapping(fe.degree, dof, this->get_solution());
+
+              VectorTools::interpolate_boundary_values (mapping, dof,
+                                                        boundary_id,
+                                                        *f,
+                                                        *constraints[0],
+                                                        velocity_mask);
+
+
+              VectorTools::interpolate_boundary_values (mapping, dof,
+                                                        boundary_id,
+                                                        *f_dot,
+                                                        constraints_dot,
+                                                        velocity_mask);
+            }
+          }
+        );
+      }
+
     signals.begin_make_grid_fe.connect(
       [&,this]()
     {
