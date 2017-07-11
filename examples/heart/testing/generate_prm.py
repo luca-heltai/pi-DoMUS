@@ -2,10 +2,9 @@
 
 import sys
 import shutil
-import subprocess
 import os
+import glob
 from sympy import *
-from decimal import *
 from sympy.parsing.sympy_parser import parse_expr
 
 def main(args=None):
@@ -23,7 +22,7 @@ def main(args=None):
                  "time_dep_patch_test",
                  "rotating_patch_test",
                  "time_dep_rotating_patch_test",
-                 "rotating_sine test",
+                 "rotating_sine_test",
                  "time_dep_rotating_sine_test",
                  "sine_cosine_test",
                  "time_dep_sine_cosine_test"]
@@ -104,6 +103,14 @@ def main(args=None):
         prm.close()
 
         os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
+        os.system("mv error.txt error"+str(i)+".txt")
+    files = glob.glob( 'error*' )
+
+    with open( 'result.txt', 'w' ) as result:
+        for file in files:
+            result.write("\nerrortable\n")
+            for line in open( file, 'r' ):
+                result.write( line )
 
 if __name__ == "__main__":
     main()

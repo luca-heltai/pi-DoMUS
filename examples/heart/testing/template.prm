@@ -62,7 +62,7 @@ subsection Error Tables
   set Solution names           = d,d,u,u,p
   set Solution names for latex = d,d,u,u,p
   set Table names              = error
-  set Write error files        = false
+  set Write error files        = true
   subsection Table 0
     set Add convergence rates          = true
     set Extra terms                    = cells,dofs
