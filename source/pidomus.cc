@@ -217,10 +217,10 @@ void piDoMUS<dim, spacedim, LAC>::run ()
       if (current_cycle == 0)
         {
           make_grid_fe();
-          setup_dofs(true);
         }
       else
         refine_mesh();
+      setup_dofs(true);
 
       train_constraints[0]->distribute(solution);
       constraints_dot.distribute(solution_dot);

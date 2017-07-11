@@ -11,7 +11,7 @@ def main(args=None):
     """The main routine."""
 
     pre_curl = ["(y-1)", 
-                "t*(y-1)", 
+                "-t*(0.5*y*y-y)", 
                 "y*(y-1)", 
                 "t*y*(y-1)",
                 "sin(pi*y)", 
@@ -101,6 +101,8 @@ def main(args=None):
         prm = open('ALE_'+ testnames[i]+ '.prm','a+')
         prm.write(v_str.replace("**", "^"))
         prm.close()
+
+        os.system("sed -i 's/xxx/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
 
         os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
         os.system("mv error.txt error"+str(i)+".txt")
