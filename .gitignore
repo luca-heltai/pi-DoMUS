@@ -7,7 +7,9 @@
 *.visit
 .ycm_extra_conf.py
 Testing/
-build/
+build*
+inst*
 TAGS
 doc/
 *~
+CMakeLists.txt.user
