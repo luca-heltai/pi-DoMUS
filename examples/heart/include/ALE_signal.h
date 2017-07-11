@@ -57,7 +57,8 @@ public:
   {
     auto &signals = this->get_signals();
     disable_heart = this->get_disable_heart_bool();
-    if(~disable_heart)
+
+    if(!disable_heart)
     {
       signals.postprocess_newly_created_triangulation.connect(
         [&,this](Triangulation<dim,spacedim> *tria)

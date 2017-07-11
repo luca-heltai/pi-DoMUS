@@ -151,33 +151,4 @@ subsection piDoMUS
   set Time stepper                                   = imex
   set Use direct solver if available                 = true
 end
-# copy past area
-subsection Dirichlet boundary conditions
-  set IDs and component masks = 0=d;u
-  set IDs and expressions     = 0=0; 0; -2*pi*sin(2*pi*x)*cos(2*pi*y); 2*pi*sin(2*pi*y)*cos(2*pi*x); 0
-  set Known component names   = d,d,u,u,p
-  set Used constants          = 
-end
-subsection Time derivative of Dirichlet boundary conditions
-  set IDs and component masks = 0=d;u
-  set IDs and expressions     = 0=0; 0; 0; 0; 0
-  set Known component names   = d,d,u,u,p
-  set Used constants          = 
-end
-subsection Exact solution
-  set Function expression = 0; 0; -2*pi*sin(2*pi*x)*cos(2*pi*y); 2*pi*sin(2*pi*y)*cos(2*pi*x); 0
-end
-subsection Forcing terms
-  set IDs and component masks = 0=ALL
-  set IDs and expressions     = 0=0; 0; -16*pi^3*sin(2*pi*x)*cos(2*pi*y); 16*pi^3*sin(2*pi*y)*cos(2*pi*x); 0
-  set Known component names   = d,d,u,u,p
-  set Used constants          = 
-end
-subsection Initial solution
-  set Function expression =0; 0; -2*pi*sin(2*pi*x)*cos(2*pi*y); 2*pi*sin(2*pi*y)*cos(2*pi*x); 0
-end
-subsection Initial solution_dot
-  set Function expression =0; 0; 0; 0; 0
-end
-
-
+# copy paste area
