@@ -10,16 +10,16 @@ from sympy.parsing.sympy_parser import parse_expr
 def main(args=None):
     """The main routine."""
 
-    pre_d = "0.3*cos(x-0.01*t)"
+    pre_d = "0.2*(1/pi)*cos(pi*y)" #"0.3*cos(x-0.01*t)"
 
     pre_v = ["-((y**2)/2-y)", 
-                "-t*((y**2)/2-y)", 
-                "-y**2*(y/3 - 1/2)", 
-                "-t*y**2*(y/3 - 1/2)",
-                "(1/pi)*cos(pi*y)", 
-                "sin(2*pi*t)*(1/pi)*cos(pi*y)",
-                "(1/(2*pi))*sin(2*pi*x)*sin(2*pi*y)", 
-                "(1/(2*pi))*sin(2*pi*t)*sin(2*pi*x)*sin(2*pi*y)"]   
+             "-t*((y**2)/2-y)", 
+             "-y**2*(y/3 - 1/2)", 
+             "-t*y**2*(y/3 - 1/2)",
+             "(1/pi)*cos(pi*y)", 
+             "sin(2*pi*t)*(1/pi)*cos(pi*y)",
+             "(1/(2*pi))*sin(2*pi*x)*sin(2*pi*y)", 
+             "(1/(2*pi))*sin(2*pi*t)*sin(2*pi*x)*sin(2*pi*y)"]   
     testnames = ["patch_test",
                  "time_dep_patch_test",
                  "rotating_patch_test",
@@ -64,6 +64,7 @@ def main(args=None):
         print("\nPerforming "+ testnames[i] +
               "\nUsing pattern d, d, u, u, p in \n"+
               "             (" + str(d[0]) + ", " + str(d[1]) + ", " + str(v[0]) + ", " + str(v[1]) + ", " + str(p)+" )\n")
+
         f_d      = [-d[0].diff(x, 2) - d[0].diff(y, 2), -d[1].diff(x, 2) - d[1].diff(y, 2), 0, 0]
         f_navier = [0, 0, v[0].diff(t) + (v[0]-dt[0])*v[0].diff(x) + (v[1]-dt[1])*v[0].diff(y), v[1].diff(t) + (v[0]-dt[0])*v[1].diff(x) + (v[1]-dt[1])*v[1].diff(y)]
         f_stokes = [0, 0, -v[0].diff(x, 2) - v[0].diff(y, 2) + p.diff(x), -v[1].diff(x, 2) - v[1].diff(y, 2) + p.diff(y)]
@@ -111,7 +112,8 @@ def main(args=None):
         os.system("sed -i 's/xxx/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
         os.system("sed -i 's/yyy/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
 
-        os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
+        #os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
+        os.system("../build/heart --prm=ALE_"+ testnames[i] +".prm --dealii")
         os.system("mv err_"+testnames[i]+".txt err"+str(i)+"_"+testnames[i]+".txt")
     files = glob.glob( 'err*' )
     files.sort()

@@ -108,7 +108,8 @@ def main(args=None):
         os.system("sed -i 's/xxx/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
         os.system("sed -i 's/yyy/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
 
-        os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
+        #os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
+        os.system("../build/heart --prm=ALE_"+ testnames[i] +".prm --dealii")
         os.system("mv err_"+testnames[i]+".txt err"+str(i)+"_"+testnames[i]+".txt")
     files = glob.glob( 'err*' )
     files.sort()

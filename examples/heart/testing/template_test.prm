@@ -72,7 +72,7 @@ subsection Error Tables
   end
 end
 subsection IDA Solver Parameters
-  set Absolute error tolerance                      = 1e-4
+  set Absolute error tolerance                      = 1e-5
   set Final time                                    = 0.25
   set Ignore algebraic terms for error computations = false
   set Initial condition Newton max iterations       = 5
@@ -84,13 +84,13 @@ subsection IDA Solver Parameters
   set Maximum number of nonlinear iterations        = 10
   set Maximum order of BDF                          = 5
   set Min step size                                 = 5e-5
-  set Relative error tolerance                      = 1e-3
+  set Relative error tolerance                      = 1e-4
   set Seconds between each output                   = 0.01
   set Show output of time steps                     = true
   set Use local tolerances                          = false
 end
 subsection IMEX Parameters
-  set Absolute error tolerance                     = 1e-6
+  set Absolute error tolerance                     = 1e-8
   set Final time                                   = 0.25
   set Initial time                                 = 0.0
   set Intervals between outputs                    = 1
@@ -114,9 +114,9 @@ subsection KINSOL for IMEX
   set Level of verbosity of the KINSOL solver            = 0
   set Maximum number of iteration before Jacobian update = 50
   set Maximum number of iterations                       = 100000
-  set Step tolerance                                     = 1e-5
+  set Step tolerance                                     = 1e-9
   set Strategy                                           = newton
-  set Tolerance for residuals                            = 1e-5
+  set Tolerance for residuals                            = 1e-9
   set Use internal KINSOL direct solver                  = false
 end
 subsection Output Parameters
@@ -145,7 +145,7 @@ subsection piDoMUS
   set Adaptive refinement                            = false
   set Enable finer preconditioner                    = false
   set Initial global refinement                      = 4
-  set Jacobian solver tolerance                      = 1e-4
+  set Jacobian solver tolerance                      = 1e-8
   set Max iterations                                 = 10000
   set Max iterations finer prec.                     = 0
   set Max tmp vectors                                = 30
@@ -155,7 +155,7 @@ subsection piDoMUS
   set Print some useful informations about processes = true
   set Refine mesh during transient                   = false
   set Threshold for solver's restart                 = 1e-2
-  set Time stepper                                   = ida
+  set Time stepper                                   = imex
   set Use direct solver if available                 = true
 end
 # copy paste area
