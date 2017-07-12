@@ -168,6 +168,22 @@ SimulatorAccess<dim,spacedim,LAC>::get_dirichlet_bcs_dot() const
   return simulator->dirichlet_bcs_dot;
 }
 
+
+template <int dim, int spacedim, typename LAC>
+const ParsedFunction<spacedim> &
+SimulatorAccess<dim,spacedim,LAC>::get_initial_solution() const
+{
+  return simulator->initial_solution;
+}
+
+
+template <int dim, int spacedim, typename LAC>
+const ParsedFunction<spacedim> &
+SimulatorAccess<dim,spacedim,LAC>::get_initial_solution_dot() const
+{
+  return simulator->initial_solution_dot;
+}
+
 //// new getter functions
 
 template <int dim, int spacedim, typename LAC>

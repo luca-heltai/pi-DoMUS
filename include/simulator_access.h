@@ -206,6 +206,24 @@ public:
   const ParsedDirichletBCs<dim,spacedim> &
   get_dirichlet_bcs_dot () const;
 
+
+  /**
+   * Return a reference to the ParsedDirichletBCs that stores
+   * the Dirichlet boundary conditions set in the parameter file.
+   */
+  const ParsedFunction<spacedim> &
+  get_initial_solution() const;
+
+
+  /**
+   * Return a reference to the ParsedDirichletBCs that stores
+   * the time derivative of the Dirichlet boundary conditions
+   * set in the parameter file.
+   */
+  const ParsedFunction<spacedim> &
+  get_initial_solution_dot() const;
+
+
   /**
    * Return a reference to the boolean, which defines if preconditioners
    * are reinitialized adaptively or not.

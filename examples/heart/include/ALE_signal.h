@@ -250,6 +250,35 @@ public:
             }
           }
         );
+
+
+        // Project or interpolate the initial conditions on the velocity using
+        // a mapped geometry.
+        signals.fix_initial_conditions.connect(
+          [&,this](typename LAC::VectorType &y, typename LAC::VectorType &y_dot)
+        {
+          auto &dof= this->get_dof_handler();
+          auto &fe = this->get_fe();
+
+          FEValuesExtractors::Vector velocities (dim);
+          ComponentMask velocity_mask = fe.component_mask (velocities);
+
+          auto &initial_solution = this->get_initial_solution();
+          auto &initial_solution_dot = this->get_initial_solution_dot();
+
+          MappingQEulerian<dim, typename LAC::VectorType> mapping(fe.degree, dof, y);
+
+          if (fe.has_support_points())
+            {
+              VectorTools::interpolate(mapping, dof, initial_solution, y, velocity_mask);
+              VectorTools::interpolate(mapping, dof, initial_solution_dot, y_dot, velocity_mask);
+            }
+          else
+            {
+              AssertThrow(false,ExcNotImplemented());
+            }
+          }
+        );
       }
 
     signals.begin_make_grid_fe.connect(
