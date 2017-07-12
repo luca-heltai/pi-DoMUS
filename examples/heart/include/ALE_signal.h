@@ -209,10 +209,18 @@ public:
         // Make sure that velocity boundary conditions are applied on the Eulerian domain.
         // This needs to be differnt w.r.t. the displacement variables, where boundary conditions
         // are applied on the reference domain.
-
+        
+        // NOTE: this doesn't change anything, velo. bc still on reference domain.
+        // quote dealii library: interpolate_boundary_values(): 
+        // "If this routine encounters a DoF that already is constrained 
+        // (for instance by a hanging node constraint, see below, or any other type of constraint, 
+        // e.g. from periodic boundary conditions), the old setting of the constraint (dofs the 
+        // entry is constrained to, inhomogeneities) is kept and nothing happens."
         signals.update_constraint_matrices.connect(
           [&,this](std::vector<std::shared_ptr<dealii::ConstraintMatrix> > &constraints, ConstraintMatrix &constraints_dot)
         {
+          auto pcout = this->get_pcout();
+          pcout << "mapping velocities\n";
           auto &dof= this->get_dof_handler();
           auto &fe = this->get_fe();
 
@@ -231,6 +239,7 @@ public:
               AssertDimension(boundary_id, dirichlet_bc_dot.get_mapped_ids()[0]);
 
               auto f = dirichlet_bc.get_mapped_function(boundary_id);
+              pcout << f.get() << " \n"; //<< f[1]<<" "<< f[2]<<" " << f[3] << "\n";
               auto f_dot = dirichlet_bc_dot.get_mapped_function(boundary_id);
 
               MappingQEulerian<dim, typename LAC::VectorType> mapping(fe.degree, dof, this->get_solution());
@@ -257,6 +266,8 @@ public:
         signals.fix_initial_conditions.connect(
           [&,this](typename LAC::VectorType &y, typename LAC::VectorType &y_dot)
         {
+          auto pcout = this->get_pcout();
+          pcout << "fixing initial conditions\n";
           auto &dof= this->get_dof_handler();
           auto &fe = this->get_fe();
 
