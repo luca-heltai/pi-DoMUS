@@ -148,6 +148,9 @@ void piDoMUS<dim, spacedim, LAC>::update_functions_and_constraints (const double
   DoFTools::make_hanging_node_constraints (*dof_handler,
                                            constraints_dot);
 
+  // add user-supplied bcs
+  signals.update_constraint_matrices(train_constraints, constraints_dot);
+
   zero_average.apply_zero_average_constraints(*dof_handler, *train_constraints[0]);
 
 
@@ -160,8 +163,6 @@ void piDoMUS<dim, spacedim, LAC>::update_functions_and_constraints (const double
   // apply zero average constraints to the system matrix
   zero_average.apply_zero_average_constraints(*dof_handler, *train_constraints[0]);
 
-  // add user-supplied bcs
-  signals.update_constraint_matrices(train_constraints, constraints_dot);
 
   // close the constraints
   for (unsigned int i=0; i<n_matrices; ++i)
