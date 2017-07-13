@@ -10,12 +10,12 @@
 #ifndef _pidomus_ALE_navier_stokes_h_
 #define _pidomus_ALE_navier_stokes_h_
 
-#include <pde_system_interface.h>
 #include <boundary_values.h>
+#include <pde_system_interface.h>
 
+#include <deal.II/grid/grid_tools.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/solver_gmres.h>
- #include <deal.II/grid/grid_tools.h>
 
 #include <deal.II/fe/mapping_q_eulerian.h>
 
@@ -26,299 +26,284 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// ALE Navier Stokes interface:
 
-template <int dim, int spacedim=dim, typename LAC=LATrilinos>
+template <int dim, int spacedim = dim, typename LAC = LATrilinos>
 class ALENavierStokes
-  :
-  public PDESystemInterface<dim,spacedim,ALENavierStokes<dim,spacedim,LAC>, LAC>
+    : public PDESystemInterface<dim,
+                                spacedim,
+                                ALENavierStokes<dim, spacedim, LAC>,
+                                LAC>
 {
 
 public:
-  virtual ~ALENavierStokes () {}
-  ALENavierStokes ();
+  virtual ~ALENavierStokes()
+  {
+  }
+  ALENavierStokes();
 
-  void declare_parameters (ParameterHandler &prm);
-  void parse_parameters_call_back ();
+  void declare_parameters(ParameterHandler &prm);
+  void parse_parameters_call_back();
 
   template <typename EnergyType, typename ResidualType>
-  void
-  energies_and_residuals(
-    const typename DoFHandler<dim,spacedim>::active_cell_iterator &cell,
-    FEValuesCache<dim,spacedim> &scratch,
-    std::vector<EnergyType> &energies,
-    std::vector<std::vector<ResidualType>> &residuals,
-    bool compute_only_system_terms) const;
+  void energies_and_residuals(
+      const typename DoFHandler<dim, spacedim>::active_cell_iterator &cell,
+      FEValuesCache<dim, spacedim> &scratch,
+      std::vector<EnergyType> &energies,
+      std::vector<std::vector<ResidualType>> &residuals,
+      bool compute_only_system_terms) const;
 
-  void
-  compute_system_operators(
-    const std::vector<shared_ptr<LATrilinos::BlockMatrix>>,
-    LinearOperator<LATrilinos::VectorType> &,
-    LinearOperator<LATrilinos::VectorType> &,
-    LinearOperator<LATrilinos::VectorType> &) const;
-  
+  void compute_system_operators(
+      const std::vector<shared_ptr<LATrilinos::BlockMatrix>>,
+      LinearOperator<LATrilinos::VectorType> &,
+      LinearOperator<LATrilinos::VectorType> &,
+      LinearOperator<LATrilinos::VectorType> &) const;
+
+
+
   virtual void connect_to_signals() const
   {
     auto &signals = this->get_signals();
     disable_heart = this->get_disable_heart_bool();
 
-    if(!disable_heart)
-    {
+    if (!disable_heart) {
       signals.postprocess_newly_created_triangulation.connect(
-        [&,this](Triangulation<dim,spacedim> *tria)
-      {
-        int index = (dim==2)? 1:0;
-        Tensor<1, dim> shift_vec;
-        shift_vec[index] = -1.318;
-        GridTools::shift(shift_vec, *tria);
-      }
-      );
-     
-      signals.update_constraint_matrices.connect(
-        [&,this](std::vector<std::shared_ptr<dealii::ConstraintMatrix> > &constraints, ConstraintMatrix &constraints_dot) 
-      {
-        auto &dof= this->get_dof_handler();
+          [&, this](Triangulation<dim, spacedim> *tria) {
+            int index = (dim == 2) ? 1 : 0;
+            Tensor<1, dim> shift_vec;
+            shift_vec[index] = -1.318;
+            GridTools::shift(shift_vec, *tria);
+          });
+
+      signals.update_constraint_matrices.connect([&, this](
+          std::vector<std::shared_ptr<dealii::ConstraintMatrix>> &constraints,
+          ConstraintMatrix &constraints_dot) {
+        auto &dof = this->get_dof_handler();
         auto &fe = this->get_fe();
 
-        FEValuesExtractors::Vector displacements (0);
-        FEValuesExtractors::Vector velocities (dim);
-        ComponentMask displacement_mask = fe.component_mask (displacements);
-        ComponentMask velocity_mask = fe.component_mask (velocities);
+        FEValuesExtractors::Vector displacements(0);
+        FEValuesExtractors::Vector velocities(dim);
+        ComponentMask displacement_mask = fe.component_mask(displacements);
+        ComponentMask velocity_mask = fe.component_mask(velocities);
 
         // in 3D:
         // displacement_mask = [1 1 1 0 0 0 0]
         // velocity_mask     = [0 0 0 1 1 1 0]
-      
+
         double timestep = this->get_current_time();
         double dt = this->get_timestep();
 
         // if timestep == nan workaround
-        if (timestep != timestep)
-        {
+        if (timestep != timestep) {
           timestep = 0;
         }
         if (dt != dt) {
           dt = 1;
         }
-        // set d_dot to zero when the reference geometry is 
+        // set d_dot to zero when the reference geometry is
         // transformed to the heart geometry in the first step.
-        if (timestep == dt)
-        {      
+        if (timestep == dt) {
           // type LAC::VectorType
-          auto &solution_dot = const_cast<typename LAC::VectorType&>(this->get_solution_dot());
-          //std::cout << "size: " << solution_dot.size() << std::endl;
+          auto &solution_dot =
+              const_cast<typename LAC::VectorType &>(this->get_solution_dot());
+          // std::cout << "size: " << solution_dot.size() << std::endl;
           solution_dot.block(0) = 0;
         }
 
-        // dirichlet BC for d 
-        if (dim==2)
-        {
+        // dirichlet BC for d
+        if (dim == 2) {
           // bottom face
-          heart_boundary_values(2,timestep);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    2,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    displacement_mask);
+          heart_boundary_values(2, timestep);
+          VectorTools::interpolate_boundary_values(dof,
+                                                   2,
+                                                   heart_boundary_values,
+                                                   *constraints[0],
+                                                   displacement_mask);
           // left hull
-          heart_boundary_values(0,timestep);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    0,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    displacement_mask);
+          heart_boundary_values(0, timestep);
+          VectorTools::interpolate_boundary_values(dof,
+                                                   0,
+                                                   heart_boundary_values,
+                                                   *constraints[0],
+                                                   displacement_mask);
           // right hull
-          heart_boundary_values(1,timestep);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    1,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    displacement_mask);
+          heart_boundary_values(1, timestep);
+          VectorTools::interpolate_boundary_values(dof,
+                                                   1,
+                                                   heart_boundary_values,
+                                                   *constraints[0],
+                                                   displacement_mask);
           // top face
-          heart_boundary_values(3,timestep);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    3,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    displacement_mask);
-        }
-        else
-        {
+          heart_boundary_values(3, timestep);
+          VectorTools::interpolate_boundary_values(dof,
+                                                   3,
+                                                   heart_boundary_values,
+                                                   *constraints[0],
+                                                   displacement_mask);
+        } else {
           // bottom face
-          heart_boundary_values(1,timestep);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    1,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    displacement_mask);
+          heart_boundary_values(1, timestep);
+          VectorTools::interpolate_boundary_values(dof,
+                                                   1,
+                                                   heart_boundary_values,
+                                                   *constraints[0],
+                                                   displacement_mask);
           // hull
-          heart_boundary_values(0,timestep);
-          VectorTools::interpolate_boundary_values (dof,
-                                                    0,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    displacement_mask);
+          heart_boundary_values(0, timestep);
+          VectorTools::interpolate_boundary_values(dof,
+                                                   0,
+                                                   heart_boundary_values,
+                                                   *constraints[0],
+                                                   displacement_mask);
           // top face
           heart_boundary_values(2),
-          VectorTools::interpolate_boundary_values (dof,
-                                                    2,
-                                                    heart_boundary_values,
-                                                    *constraints[0],
-                                                    displacement_mask);
+              VectorTools::interpolate_boundary_values(dof,
+                                                       2,
+                                                       heart_boundary_values,
+                                                       *constraints[0],
+                                                       displacement_mask);
         }
 
-        int n_faces = (dim==2)? 3 : 2;
+        int n_faces = (dim == 2) ? 3 : 2;
 
-        if(timestep < 0.005)  // 0.005 is the time of one heart interval
+        if (timestep < 0.005) // 0.005 is the time of one heart interval
         {
           // time derivatives of dirichlet BC for d
-          for (int i = 0; i < n_faces; ++i)
-          { 
-            VectorTools::interpolate_boundary_values (dof,
-                                                      i,
-                                                      ZeroFunction<dim>(2*dim+1),
-                                                      constraints_dot,
-                                                      displacement_mask);
+          for (int i = 0; i < n_faces; ++i) {
+            VectorTools::interpolate_boundary_values(
+                dof,
+                i,
+                ZeroFunction<dim>(2 * dim + 1),
+                constraints_dot,
+                displacement_mask);
           }
-        }
-        else
-        {
+        } else {
           // time derivatives of dirichlet BC for d
-          for (int j = 0; j < n_faces; ++j)
-          {
+          for (int j = 0; j < n_faces; ++j) {
             heart_boundary_values(j, timestep, true);
-            VectorTools::interpolate_boundary_values (dof,
-                                                      j,
-                                                      heart_boundary_values,
-                                                      constraints_dot,
-                                                      displacement_mask);
+            VectorTools::interpolate_boundary_values(dof,
+                                                     j,
+                                                     heart_boundary_values,
+                                                     constraints_dot,
+                                                     displacement_mask);
           }
           // BC for u
-          for (int j = 0; j < n_faces; ++j)
-          {
+          for (int j = 0; j < n_faces; ++j) {
             heart_boundary_values(j, timestep, true);
-            VectorTools::interpolate_boundary_values (dof,
-                                                      j,
-                                                      heart_boundary_values,
-                                                      *constraints[0],
-                                                      velocity_mask);
+            VectorTools::interpolate_boundary_values(
+                dof, j, heart_boundary_values, *constraints[0], velocity_mask);
           }
         }
-      }
-      );
+      });
+    } else {
+      // Make sure that velocity boundary conditions are applied on the Eulerian
+      // domain.
+      // This needs to be differnt w.r.t. the displacement variables, where
+      // boundary conditions
+      // are applied on the reference domain.
+
+      // NOTE: this doesn't change anything, velo. bc still on reference domain.
+      // quote dealii library: interpolate_boundary_values():
+      // "If this routine encounters a DoF that already is constrained
+      // (for instance by a hanging node constraint, see below, or any other
+      // type of constraint,
+      // e.g. from periodic boundary conditions), the old setting of the
+      // constraint (dofs the
+      // entry is constrained to, inhomogeneities) is kept and nothing happens."
+      signals.update_constraint_matrices.connect([&, this](
+          std::vector<std::shared_ptr<dealii::ConstraintMatrix>> &constraints,
+          ConstraintMatrix &constraints_dot) {
+        auto pcout = this->get_pcout();
+        pcout << "mapping velocities\n";
+        auto &dof = this->get_dof_handler();
+        auto &fe = this->get_fe();
+
+        FEValuesExtractors::Vector velocities(dim);
+        ComponentMask velocity_mask = fe.component_mask(velocities);
+
+        auto &dirichlet_bc = this->get_dirichlet_bcs();
+        auto &dirichlet_bc_dot = this->get_dirichlet_bcs_dot();
+
+        if (dirichlet_bc.get_mapped_ids().size() > 0) {
+          AssertDimension(dirichlet_bc.get_mapped_ids().size(),
+                          dirichlet_bc_dot.get_mapped_ids().size());
+
+          auto boundary_id = dirichlet_bc.get_mapped_ids()[0];
+          AssertDimension(1, dirichlet_bc.get_mapped_ids().size());
+          AssertDimension(boundary_id, dirichlet_bc_dot.get_mapped_ids()[0]);
+
+          auto f = dirichlet_bc.get_mapped_function(boundary_id);
+          pcout << f.get() << " \n" << std::flush; //<< f[1]<<" "<< f[2]<<" " << f[3] << "\n";
+          auto f_dot = dirichlet_bc_dot.get_mapped_function(boundary_id);
+
+          MappingQEulerian<dim, typename LAC::VectorType> mapping(
+              fe.degree, dof, this->get_solution());
+
+          VectorTools::interpolate_boundary_values(mapping,
+                                                   dof,
+                                                   boundary_id,
+                                                   *f,
+                                                   *constraints[0],
+                                                   velocity_mask);
+
+
+          VectorTools::interpolate_boundary_values(mapping,
+                                                   dof,
+                                                   boundary_id,
+                                                   *f_dot,
+                                                   constraints_dot,
+                                                   velocity_mask);
+        }
+      });
+
+
+      // Project or interpolate the initial conditions on the velocity using
+      // a mapped geometry.
+      signals.fix_initial_conditions.connect([&, this](
+          typename LAC::VectorType &y, typename LAC::VectorType &y_dot) {
+        auto pcout = this->get_pcout();
+        pcout << "fixing initial conditions\n";
+        auto &dof = this->get_dof_handler();
+        auto &fe = this->get_fe();
+
+        FEValuesExtractors::Vector velocities(dim);
+        ComponentMask velocity_mask = fe.component_mask(velocities);
+
+        auto &initial_solution = this->get_initial_solution();
+        auto &initial_solution_dot = this->get_initial_solution_dot();
+
+        MappingQEulerian<dim, typename LAC::VectorType> mapping(
+            fe.degree, dof, y);
+
+        if (fe.has_support_points()) {
+          VectorTools::interpolate(
+              mapping, dof, initial_solution, y, velocity_mask);
+          VectorTools::interpolate(
+              mapping, dof, initial_solution_dot, y_dot, velocity_mask);
+        } else {
+          AssertThrow(false, ExcNotImplemented());
+        }
+      });
     }
-    else {
-        // Make sure that velocity boundary conditions are applied on the Eulerian domain.
-        // This needs to be differnt w.r.t. the displacement variables, where boundary conditions
-        // are applied on the reference domain.
-        
-        // NOTE: this doesn't change anything, velo. bc still on reference domain.
-        // quote dealii library: interpolate_boundary_values(): 
-        // "If this routine encounters a DoF that already is constrained 
-        // (for instance by a hanging node constraint, see below, or any other type of constraint, 
-        // e.g. from periodic boundary conditions), the old setting of the constraint (dofs the 
-        // entry is constrained to, inhomogeneities) is kept and nothing happens."
-        signals.update_constraint_matrices.connect(
-          [&,this](std::vector<std::shared_ptr<dealii::ConstraintMatrix> > &constraints, ConstraintMatrix &constraints_dot)
-        {
-          auto pcout = this->get_pcout();
-          pcout << "mapping velocities\n";
-          auto &dof= this->get_dof_handler();
-          auto &fe = this->get_fe();
 
-          FEValuesExtractors::Vector velocities (dim);
-          ComponentMask velocity_mask = fe.component_mask (velocities);
-
-          auto &dirichlet_bc = this->get_dirichlet_bcs();
-          auto &dirichlet_bc_dot = this->get_dirichlet_bcs_dot();
-
-          if(dirichlet_bc.get_mapped_ids().size() > 0) {
-              AssertDimension(dirichlet_bc.get_mapped_ids().size(),
-                              dirichlet_bc_dot.get_mapped_ids().size());
-
-              auto boundary_id = dirichlet_bc.get_mapped_ids()[0];
-              AssertDimension(1, dirichlet_bc.get_mapped_ids().size());
-              AssertDimension(boundary_id, dirichlet_bc_dot.get_mapped_ids()[0]);
-
-              auto f = dirichlet_bc.get_mapped_function(boundary_id);
-              pcout << f.get() << " \n"; //<< f[1]<<" "<< f[2]<<" " << f[3] << "\n";
-              auto f_dot = dirichlet_bc_dot.get_mapped_function(boundary_id);
-
-              MappingQEulerian<dim, typename LAC::VectorType> mapping(fe.degree, dof, this->get_solution());
-
-              VectorTools::interpolate_boundary_values (mapping, dof,
-                                                        boundary_id,
-                                                        *f,
-                                                        *constraints[0],
-                                                        velocity_mask);
-
-
-              VectorTools::interpolate_boundary_values (mapping, dof,
-                                                        boundary_id,
-                                                        *f_dot,
-                                                        constraints_dot,
-                                                        velocity_mask);
-            }
-          }
-        );
-
-
-        // Project or interpolate the initial conditions on the velocity using
-        // a mapped geometry.
-        signals.fix_initial_conditions.connect(
-          [&,this](typename LAC::VectorType &y, typename LAC::VectorType &y_dot)
-        {
-          auto pcout = this->get_pcout();
-          pcout << "fixing initial conditions\n";
-          auto &dof= this->get_dof_handler();
-          auto &fe = this->get_fe();
-
-          FEValuesExtractors::Vector velocities (dim);
-          ComponentMask velocity_mask = fe.component_mask (velocities);
-
-          auto &initial_solution = this->get_initial_solution();
-          auto &initial_solution_dot = this->get_initial_solution_dot();
-
-          MappingQEulerian<dim, typename LAC::VectorType> mapping(fe.degree, dof, y);
-
-          if (fe.has_support_points())
-            {
-              VectorTools::interpolate(mapping, dof, initial_solution, y, velocity_mask);
-              VectorTools::interpolate(mapping, dof, initial_solution_dot, y_dot, velocity_mask);
-            }
-          else
-            {
-              AssertThrow(false,ExcNotImplemented());
-            }
-          }
-        );
-      }
-
-    signals.begin_make_grid_fe.connect(
-      [&,this]()
-    {
+    signals.begin_make_grid_fe.connect([&, this]() {
       adaptive_preconditioners_on = this->get_adaptive_preconditioners();
       max_iterations_adaptive = this->get_max_iterations_adaptive();
       use_explicit_solutions = this->get_explicit_solution_bool();
-    }
-    );
+    });
 
-    signals.end_solve_jacobian_system.connect(
-      [&,this]()
-    {
+    signals.end_solve_jacobian_system.connect([&, this]() {
       double time = this->get_current_time();
-      if (time > 0.005 && std::is_same<LAC, LATrilinos>::value )
-        iterations_last_step = this->get_solver_control()->last_step(); 
-      else 
-        iterations_last_step = 0;     
-    }
-    );
-  } 
-  
-  //void
-  //set_matrix_couplings(std::vector<std::string> &couplings) const;
+      if (time > 0.005 && std::is_same<LAC, LATrilinos>::value)
+        iterations_last_step = this->get_solver_control()->last_step();
+      else
+        iterations_last_step = 0;
+    });
+  }
+
+  // void
+  // set_matrix_couplings(std::vector<std::string> &couplings) const;
 
 private:
-
-// Physical parameter
+  // Physical parameter
   double nu;
   double rho;
 
@@ -356,64 +341,66 @@ private:
 
 
 template <int dim, int spacedim, typename LAC>
-ALENavierStokes<dim,spacedim, LAC>::
-ALENavierStokes()
-  :
-  PDESystemInterface<dim,spacedim,ALENavierStokes<dim,spacedim,LAC>, LAC>(
-    "ALE Navier Stokes Interface",
-    dim+dim+1,
-    2,
-    "FESystem[FE_Q(2)^d-FE_Q(2)^d-FE_Q(1)]",
-    (dim==2)? "d,d,u,u,p" : "d,d,d,u,u,u,p",
-    "1,1,0"),
-  AMG_u("AMG for u"),
-  AMG_d("AMG for d"),
-  jac_M("Jacobi for M")
+ALENavierStokes<dim, spacedim, LAC>::ALENavierStokes()
+    : PDESystemInterface<dim,
+                         spacedim,
+                         ALENavierStokes<dim, spacedim, LAC>,
+                         LAC>("ALE Navier Stokes Interface",
+                              dim + dim + 1,
+                              2,
+                              "FESystem[FE_Q(2)^d-FE_Q(2)^d-FE_Q(1)]",
+                              (dim == 2) ? "d,d,u,u,p" : "d,d,d,u,u,u,p",
+                              "1,1,0")
+    , AMG_u("AMG for u")
+    , AMG_d("AMG for d")
+    , jac_M("Jacobi for M")
 {
   this->init();
 }
 
 template <int dim, int spacedim, typename LAC>
-void ALENavierStokes<dim,spacedim,LAC>::
-declare_parameters (ParameterHandler &prm)
+void ALENavierStokes<dim, spacedim, LAC>::declare_parameters(
+    ParameterHandler &prm)
 {
-  PDESystemInterface<dim,spacedim, ALENavierStokes<dim,spacedim,LAC>,LAC>::
-  declare_parameters(prm);
+  PDESystemInterface<dim, spacedim, ALENavierStokes<dim, spacedim, LAC>, LAC>::
+      declare_parameters(prm);
 
-  this->add_parameter(prm, &nu,
-                      "nu [Pa s]", "1.0",
-                      Patterns::Double(0.0),
-                      "Viscosity");
+  this->add_parameter(
+      prm, &nu, "nu [Pa s]", "1.0", Patterns::Double(0.0), "Viscosity");
 
-  this->add_parameter(prm, &rho,
-                      "rho [kg m^-d]", "1.0",
-                      Patterns::Double(0.0),
-                      "Density");
+  this->add_parameter(
+      prm, &rho, "rho [kg m^-d]", "1.0", Patterns::Double(0.0), "Density");
 
-  this->add_parameter(prm, &Mp_use_inverse_operator,
-                      "Invert Mp using inverse operator", "false",
+  this->add_parameter(prm,
+                      &Mp_use_inverse_operator,
+                      "Invert Mp using inverse operator",
+                      "false",
                       Patterns::Bool(),
                       "Invert Mp usign inverse operator");
 
-  this->add_parameter(prm, &AMG_d_use_inverse_operator,
-                      "AMG d - use inverse operator", "false",
+  this->add_parameter(prm,
+                      &AMG_d_use_inverse_operator,
+                      "AMG d - use inverse operator",
+                      "false",
                       Patterns::Bool(),
                       "Enable the use of inverse operator for AMG d");
 
-  this->add_parameter(prm, &AMG_u_use_inverse_operator,
-                      "AMG u - use inverse operator", "false",
+  this->add_parameter(prm,
+                      &AMG_u_use_inverse_operator,
+                      "AMG u - use inverse operator",
+                      "false",
                       Patterns::Bool(),
                       "Enable the use of inverse operator for AMG u");
 }
 
 template <int dim, int spacedim, typename LAC>
-void ALENavierStokes<dim,spacedim,LAC>::
-parse_parameters_call_back ()
-{}
+void ALENavierStokes<dim, spacedim, LAC>::parse_parameters_call_back()
+{
+}
 
-//template <int dim, int spacedim, typename LAC>
-//void ALENavierStokes<dim,spacedim,LAC>::
-//set_matrix_couplings(std::vector<std::string> &couplings) const
+// template <int dim, int spacedim, typename LAC>
+// void ALENavierStokes<dim,spacedim,LAC>::
+// set_matrix_couplings(std::vector<std::string> &couplings) const
 //{
 //  couplings[0] = "1,0,0; 0,1,1; 0,1,0"; // TODO: Select only not null entries
 //  couplings[1] = "0,0,0; 0,0,0; 0,0,1";
@@ -421,86 +408,92 @@ parse_parameters_call_back ()
 
 template <int dim, int spacedim, typename LAC>
 template <typename EnergyType, typename ResidualType>
-void
-ALENavierStokes<dim,spacedim,LAC>::
-energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iterator &cell,
-                       FEValuesCache<dim,spacedim> &fe_cache,
-                       std::vector<EnergyType> &,
-                       std::vector<std::vector<ResidualType> > &residual,
-                       bool compute_only_system_terms) const
+void ALENavierStokes<dim, spacedim, LAC>::energies_and_residuals(
+    const typename DoFHandler<dim, spacedim>::active_cell_iterator &cell,
+    FEValuesCache<dim, spacedim> &fe_cache,
+    std::vector<EnergyType> &,
+    std::vector<std::vector<ResidualType>> &residual,
+    bool compute_only_system_terms) const
 {
   const FEValuesExtractors::Vector displacement(0);
   const FEValuesExtractors::Vector velocity(dim);
-  const FEValuesExtractors::Scalar pressure(2*dim);
+  const FEValuesExtractors::Scalar pressure(2 * dim);
 
   ResidualType et = 0;
   double dummy = 0.0;
 
-/*
-  double h = cell->diameter();
+  /*
+    double h = cell->diameter();
 
-  for (unsigned int face=0; face < GeometryInfo<dim>::faces_per_cell; ++face)
-  {
-    if (cell->face(face)->at_boundary())
+    for (unsigned int face=0; face < GeometryInfo<dim>::faces_per_cell; ++face)
     {
-      this->reinit(et, cell, face, fe_cache);
-      
-      // Displacement:
-      auto &d_dot_ = fe_cache.get_values( "solution_dot", "d_dot", displacement, et);
-
-      // Velocity:
-      auto &u_ = fe_cache.get_values("solution", "grad_u", velocity, et);
-
-      // Pressure:
-      // auto &grad_p_ = fe_cache.get_gradients("solution", "p", pressure, et);
-
-      auto &fev = fe_cache.get_current_fe_values();
-      auto &q_points = fe_cache.get_quadrature_points();
-      auto &JxW = fe_cache.get_JxW_values();
-
-      for (unsigned int q=0; q<q_points.size(); ++q)
+      if (cell->face(face)->at_boundary())
       {
+        this->reinit(et, cell, face, fe_cache);
+
         // Displacement:
-        const Tensor<1, dim, ResidualType> &d_dot = d_dot_[q];
+        auto &d_dot_ = fe_cache.get_values( "solution_dot", "d_dot",
+    displacement, et);
 
         // Velocity:
-        const Tensor<1, dim, ResidualType> &u = u_[q];
+        auto &u_ = fe_cache.get_values("solution", "grad_u", velocity, et);
 
-        for (unsigned int i=0; i<residual[0].size(); ++i)
+        // Pressure:
+        // auto &grad_p_ = fe_cache.get_gradients("solution", "p", pressure,
+    et);
+
+        auto &fev = fe_cache.get_current_fe_values();
+        auto &q_points = fe_cache.get_quadrature_points();
+        auto &JxW = fe_cache.get_JxW_values();
+
+        for (unsigned int q=0; q<q_points.size(); ++q)
         {
-          // Test functions:
-          // auto d_test = fev[displacement].value(i,q);
-          auto u_test = fev[velocity].value(i,q);
+          // Displacement:
+          const Tensor<1, dim, ResidualType> &d_dot = d_dot_[q];
 
-          residual[0][i] += (1./h)*( (u - d_dot) * u_test )*JxW[q];
-        }
-      } // end loop over quadrature points
-      break;
-    }
-  } // end loop over faces
-*/
-  this->reinit (et, cell, fe_cache);
+          // Velocity:
+          const Tensor<1, dim, ResidualType> &u = u_[q];
+
+          for (unsigned int i=0; i<residual[0].size(); ++i)
+          {
+            // Test functions:
+            // auto d_test = fev[displacement].value(i,q);
+            auto u_test = fev[velocity].value(i,q);
+
+            residual[0][i] += (1./h)*( (u - d_dot) * u_test )*JxW[q];
+          }
+        } // end loop over quadrature points
+        break;
+      }
+    } // end loop over faces
+  */
+  this->reinit(et, cell, fe_cache);
 
   // displacement:
-  auto &grad_ds = fe_cache.get_gradients( "solution", "grad_d", displacement, et);
-  auto &Fs = fe_cache.get_deformation_gradients( "solution", "Fd", displacement, et);
-  auto &ds_dot = fe_cache.get_values( "solution_dot", "d_dot", displacement, et);
+  auto &grad_ds =
+      fe_cache.get_gradients("solution", "grad_d", displacement, et);
+  auto &Fs =
+      fe_cache.get_deformation_gradients("solution", "Fd", displacement, et);
+  auto &ds_dot = fe_cache.get_values("solution_dot", "d_dot", displacement, et);
 
   // explicit deformation gradients:
-  auto &Fs_old = fe_cache.get_deformation_gradients( "explicit_solution", "Fd", displacement, dummy);
+  auto &Fs_old = fe_cache.get_deformation_gradients(
+      "explicit_solution", "Fd", displacement, dummy);
 
   // velocity:
-  auto &us = fe_cache.get_values( "solution", "u", velocity, et);
-  auto &grad_us = fe_cache.get_gradients( "solution", "grad_u", velocity, et);
-  //auto &div_us = fe_cache.get_divergences( "solution", "div_u", velocity, et);
-  auto &sym_grad_us = fe_cache.get_symmetric_gradients( "solution", "u", velocity, et);
-  auto &us_dot = fe_cache.get_values( "solution_dot", "u_dot", velocity, et);
+  auto &us = fe_cache.get_values("solution", "u", velocity, et);
+  auto &grad_us = fe_cache.get_gradients("solution", "grad_u", velocity, et);
+  // auto &div_us = fe_cache.get_divergences( "solution", "div_u", velocity,
+  // et);
+  auto &sym_grad_us =
+      fe_cache.get_symmetric_gradients("solution", "u", velocity, et);
+  auto &us_dot = fe_cache.get_values("solution_dot", "u_dot", velocity, et);
 
   // Previous time step solution:
-  auto &u_olds = fe_cache.get_values("explicit_solution","u",velocity,dummy);  
+  auto &u_olds = fe_cache.get_values("explicit_solution", "u", velocity, dummy);
 
   // pressure:
-  auto &ps = fe_cache.get_values( "solution", "p", pressure, et);
+  auto &ps = fe_cache.get_values("solution", "p", pressure, et);
 
   // Jacobian:
   auto &JxW = fe_cache.get_JxW_values();
@@ -509,34 +502,30 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
 
   auto &fev = fe_cache.get_current_fe_values();
 
-  for (unsigned int quad=0; quad<n_quad_points; ++quad)
-  {
+  for (unsigned int quad = 0; quad < n_quad_points; ++quad) {
     // velocity:
-    //const ResidualType &div_u = div_us[quad];
+    // const ResidualType &div_u = div_us[quad];
     const Tensor<1, dim, ResidualType> &u_dot = us_dot[quad];
     const Tensor<2, dim, ResidualType> &grad_u = grad_us[quad];
-    const Tensor <2, dim, ResidualType> &sym_grad_u = sym_grad_us[quad];
-    
+    const Tensor<2, dim, ResidualType> &sym_grad_u = sym_grad_us[quad];
+
     // displacement
     const Tensor<1, dim, ResidualType> &d_dot = ds_dot[quad];
     const Tensor<2, dim, ResidualType> &grad_d = grad_ds[quad];
 
     // deformation gradient, assigned differently due to different ResidualTypes
-    Tensor <2, dim, ResidualType> F;
-    if (use_explicit_solutions == true)
-    {
+    Tensor<2, dim, ResidualType> F;
+    if (use_explicit_solutions == true) {
       for (int d = 0; d < dim; ++d)
         for (int e = 0; e < dim; ++e)
           F[d][e] = Fs_old[quad][d][e];
-    }
-    else
-    {
+    } else {
       F = Fs[quad];
     }
 
     ResidualType J = determinant(F);
-    const Tensor <2, dim, ResidualType> &F_inv = invert(F);
-    const Tensor <2, dim, ResidualType> &Ft_inv = transpose(F_inv);
+    const Tensor<2, dim, ResidualType> &F_inv = invert(F);
+    const Tensor<2, dim, ResidualType> &Ft_inv = transpose(F_inv);
 
     // Previous time step solution:
     const Tensor<1, dim, ResidualType> &u_old = u_olds[quad];
@@ -545,172 +534,159 @@ energies_and_residuals(const typename DoFHandler<dim,spacedim>::active_cell_iter
     const ResidualType &p = ps[quad];
 
     // jacobian of ALE transformation
-    auto J_ale = J; 
-    
+    auto J_ale = J;
+
     // pressure * identity matrix
-    Tensor <2, dim, ResidualType> p_Id;
-    for (unsigned int i = 0; i<dim; ++i)
+    Tensor<2, dim, ResidualType> p_Id;
+    for (unsigned int i = 0; i < dim; ++i)
       p_Id[i][i] = p;
 
-    //ResidualType my_rho = rho;
-    const Tensor <2, dim, ResidualType> sigma = - p_Id + nu*(sym_grad_u * F_inv + ( Ft_inv * transpose(sym_grad_u) ) ) ;
+    // ResidualType my_rho = rho;
+    const Tensor<2, dim, ResidualType> sigma =
+        -p_Id + nu * (sym_grad_u * F_inv + (Ft_inv * transpose(sym_grad_u)));
 
-    for (unsigned int i=0; i<residual[0].size(); ++i)
-    {
+    for (unsigned int i = 0; i < residual[0].size(); ++i) {
       // test functions:
 
       // velocity:
-      auto u_test = fev[velocity].value(i,quad);
-      auto grad_u_test = fev[velocity].gradient(i,quad);
-      //auto div_u_test = fev[velocity].divergence(i,quad);
+      auto u_test = fev[velocity].value(i, quad);
+      auto grad_u_test = fev[velocity].gradient(i, quad);
+      // auto div_u_test = fev[velocity].divergence(i,quad);
 
       // displacement:
-      auto grad_d_test = fev[displacement].gradient(i,quad);
+      auto grad_d_test = fev[displacement].gradient(i, quad);
 
       // pressure:
-      auto p_test = fev[pressure].value(i,quad);
+      auto p_test = fev[pressure].value(i, quad);
 
-      residual[1][i] += ( (1./nu)*p*p_test )*JxW[quad];
+      residual[1][i] += ((1. / nu) * p * p_test) * JxW[quad];
 
       // you need to double check this!!
       residual[0][i] +=
-        (
-          // time derivative term
-          rho*scalar_product( u_dot * J_ale , u_test )
+          (
+              // time derivative term
+              rho * scalar_product(u_dot * J_ale, u_test)
 
-          + rho*scalar_product( grad_u * ( F_inv * ( u_old - d_dot ) ) * J_ale , u_test )
+              +
+              rho * scalar_product(grad_u * (F_inv * (u_old - d_dot)) * J_ale,
+                                   u_test)
 
-          + scalar_product( J_ale * sigma * Ft_inv, grad_u_test )
-          // old parts
-          //- div_u * p_test
-          //- p * div_u_test
-   
-          // divergence free constriant
-          - trace(grad_u *F_inv) * J_ale *p_test
-          
-          // Impose harmony of d and u=d_dot
-          + scalar_product( grad_d , grad_d_test )
-        )*JxW[quad];
+              +
+              scalar_product(J_ale * sigma * Ft_inv, grad_u_test)
+              // old parts
+              //- div_u * p_test
+              //- p * div_u_test
 
-        }
+              // divergence free constriant
+              -
+              trace(grad_u * F_inv) * J_ale * p_test
+
+              // Impose harmony of d and u=d_dot
+              +
+              scalar_product(grad_d, grad_d_test)) *
+          JxW[quad];
     }
+  }
 
   (void)compute_only_system_terms;
 }
 
 template <int dim, int spacedim, typename LAC>
-void
-ALENavierStokes<dim,spacedim,LAC>::compute_system_operators(
-  const std::vector<shared_ptr<LATrilinos::BlockMatrix>> matrices,
-  LinearOperator<LATrilinos::VectorType> &system_op,
-  LinearOperator<LATrilinos::VectorType> &prec_op,
-  LinearOperator<LATrilinos::VectorType> &) const
+void ALENavierStokes<dim, spacedim, LAC>::compute_system_operators(
+    const std::vector<shared_ptr<LATrilinos::BlockMatrix>> matrices,
+    LinearOperator<LATrilinos::VectorType> &system_op,
+    LinearOperator<LATrilinos::VectorType> &prec_op,
+    LinearOperator<LATrilinos::VectorType> &) const
 {
   typedef LATrilinos::VectorType::BlockType BVEC;
   typedef LATrilinos::VectorType VEC;
 
-// Preconditioners:
-  const DoFHandler<dim,spacedim> &dh = this->get_dof_handler();
-  const ParsedFiniteElement<dim,spacedim> fe = this->pfe;
-  
-// TODO 1: DONE find a way to check if local refinement is turned off in "compute_system_operators()" 
+  // Preconditioners:
+  const DoFHandler<dim, spacedim> &dh = this->get_dof_handler();
+  const ParsedFiniteElement<dim, spacedim> fe = this->pfe;
 
-// TODO 2: DONE check convergence time of last step
-// get iterations of last step, if iterations > 15: refine
+  // TODO 1: DONE find a way to check if local refinement is turned off in
+  // "compute_system_operators()"
+
+  // TODO 2: DONE check convergence time of last step
+  // get iterations of last step, if iterations > 15: refine
 
   static int counter = 0;
 
-  if (adaptive_preconditioners_on == true)
-  {
+  if (adaptive_preconditioners_on == true) {
     double time = this->get_current_time();
     // only refine at the beginning and if convergence is slow
-    if (time <= 0.006 || iterations_last_step > max_iterations_adaptive)
-    {
-      AMG_d.initialize_preconditioner<dim, spacedim>( matrices[0]->block(0,0), fe, dh);
-      AMG_u.initialize_preconditioner<dim, spacedim>( matrices[0]->block(1,1), fe, dh);
-      jac_M.initialize_preconditioner<>(matrices[1]->block(2,2));
+    if (time <= 0.006 || iterations_last_step > max_iterations_adaptive) {
+      AMG_d.initialize_preconditioner<dim, spacedim>(
+          matrices[0]->block(0, 0), fe, dh);
+      AMG_u.initialize_preconditioner<dim, spacedim>(
+          matrices[0]->block(1, 1), fe, dh);
+      jac_M.initialize_preconditioner<>(matrices[1]->block(2, 2));
       counter++;
       // make verbose with pcout
       // std::cout << "precons reinitialized!" << std::endl;
     }
-  } 
-  else
-  {
-      AMG_d.initialize_preconditioner<dim, spacedim>( matrices[0]->block(0,0), fe, dh);
-      AMG_u.initialize_preconditioner<dim, spacedim>( matrices[0]->block(1,1), fe, dh);
-      jac_M.initialize_preconditioner<>(matrices[1]->block(2,2));
+  } else {
+    AMG_d.initialize_preconditioner<dim, spacedim>(
+        matrices[0]->block(0, 0), fe, dh);
+    AMG_u.initialize_preconditioner<dim, spacedim>(
+        matrices[0]->block(1, 1), fe, dh);
+    jac_M.initialize_preconditioner<>(matrices[1]->block(2, 2));
   }
-////////////////////////////////////////////////////////////////////////////
-// SYSTEM MATRIX:
+  ////////////////////////////////////////////////////////////////////////////
+  // SYSTEM MATRIX:
 
-  std::array<std::array<LinearOperator< BVEC >, 3>, 3> S;
-  for (unsigned int i = 0; i<3; ++i)
-    for (unsigned int j = 0; j<3; ++j)
-      S[i][j] = linear_operator< BVEC >(matrices[0]->block(i,j) );
-  system_op = BlockLinearOperator< VEC >(S);
+  std::array<std::array<LinearOperator<BVEC>, 3>, 3> S;
+  for (unsigned int i = 0; i < 3; ++i)
+    for (unsigned int j = 0; j < 3; ++j)
+      S[i][j] = linear_operator<BVEC>(matrices[0]->block(i, j));
+  system_op = BlockLinearOperator<VEC>(S);
 
-////////////////////////////////////////////////////////////////////////////
-// PRECONDITIONER MATRIX:
+  ////////////////////////////////////////////////////////////////////////////
+  // PRECONDITIONER MATRIX:
 
   std::array<std::array<LinearOperator<TrilinosWrappers::MPI::Vector>, 3>, 3> P;
-  for (unsigned int i = 0; i<3; ++i)
-    for (unsigned int j = 0; j<3; ++j)
-      P[i][j] = linear_operator<BVEC>( matrices[0]->block(i,j) );
+  for (unsigned int i = 0; i < 3; ++i)
+    for (unsigned int j = 0; j < 3; ++j)
+      P[i][j] = linear_operator<BVEC>(matrices[0]->block(i, j));
 
   static ReductionControl solver_control_pre(5000, 1e-8);
   static SolverCG<BVEC> solver_CG(solver_control_pre);
   static SolverGMRES<BVEC> solver_GMRES(solver_control_pre);
 
-  for (unsigned int i = 0; i<3; ++i)
-    for (unsigned int j = 0; j<3; ++j)
-      if (i!=j)
-        P[i][j] = null_operator< TrilinosWrappers::MPI::Vector >(P[i][j]);
+  for (unsigned int i = 0; i < 3; ++i)
+    for (unsigned int j = 0; j < 3; ++j)
+      if (i != j)
+        P[i][j] = null_operator<TrilinosWrappers::MPI::Vector>(P[i][j]);
 
-  auto A = linear_operator< BVEC>(matrices[0]->block(1,1) );
-  auto B = linear_operator< BVEC>(matrices[0]->block(2,1) );
-  auto Bt = transpose_operator< >(B);
+  auto A = linear_operator<BVEC>(matrices[0]->block(1, 1));
+  auto B = linear_operator<BVEC>(matrices[0]->block(2, 1));
+  auto Bt = transpose_operator<>(B);
 
   LinearOperator<BVEC> A_inv;
-  if (AMG_u_use_inverse_operator)
-    {
-      A_inv = inverse_operator( S[1][1],
-                                solver_GMRES,
-                                AMG_u);
-    }
-  else
-    {
-      A_inv = linear_operator<BVEC>(matrices[0]->block(1,1),
-                                    AMG_u);
-    }
+  if (AMG_u_use_inverse_operator) {
+    A_inv = inverse_operator(S[1][1], solver_GMRES, AMG_u);
+  } else {
+    A_inv = linear_operator<BVEC>(matrices[0]->block(1, 1), AMG_u);
+  }
 
-  auto Mp = linear_operator< TrilinosWrappers::MPI::Vector >( matrices[1]->block(2,2) );
+  auto Mp =
+      linear_operator<TrilinosWrappers::MPI::Vector>(matrices[1]->block(2, 2));
 
   LinearOperator<BVEC> Mp_inv;
-  if (Mp_use_inverse_operator)
-    {
-      Mp_inv = inverse_operator(Mp,
-                                solver_GMRES,
-                                jac_M);
-    }
-  else
-    {
-      Mp_inv = linear_operator<BVEC>(matrices[1]->block(2,2),
-                                     jac_M);
-    }
+  if (Mp_use_inverse_operator) {
+    Mp_inv = inverse_operator(Mp, solver_GMRES, jac_M);
+  } else {
+    Mp_inv = linear_operator<BVEC>(matrices[1]->block(2, 2), jac_M);
+  }
 
   auto Schur_inv = nu * Mp_inv;
 
-  if (AMG_d_use_inverse_operator)
-    {
-      P[0][0] = inverse_operator( S[0][0],
-                                  solver_CG,
-                                  AMG_d);
-    }
-  else
-    {
-      P[0][0] = linear_operator<BVEC>(matrices[0]->block(0,0),
-                                      AMG_d);
-    }
+  if (AMG_d_use_inverse_operator) {
+    P[0][0] = inverse_operator(S[0][0], solver_CG, AMG_d);
+  } else {
+    P[0][0] = linear_operator<BVEC>(matrices[0]->block(0, 0), AMG_d);
+  }
 
   P[1][1] = A_inv;
   P[1][2] = A_inv * Bt * Schur_inv;
@@ -718,7 +694,7 @@ ALENavierStokes<dim,spacedim,LAC>::compute_system_operators(
   P[2][2] = -1 * Schur_inv;
 
 
-  prec_op = BlockLinearOperator< VEC >(P);
+  prec_op = BlockLinearOperator<VEC>(P);
 }
 
 #endif
