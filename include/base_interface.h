@@ -360,6 +360,12 @@ public:
    * this function.
    */
   virtual UpdateFlags get_cell_update_flags() const;
+
+
+  virtual void apply_forcing_terms(const typename DoFHandler<dim,spacedim>::active_cell_iterator &cell,
+                                   FEValuesCache<dim,spacedim> &scratch,
+                                   std::vector<double> &local_residual) const;
+
   /** @} */
 
 

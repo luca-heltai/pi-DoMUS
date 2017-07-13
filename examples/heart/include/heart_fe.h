@@ -8,9 +8,7 @@
 
 using namespace dealii;
 
-template <int dim, int spacedim>
-class Heart
-{
+template <int dim, int spacedim> class Heart {
 public:
   Heart();
   Heart(bool);

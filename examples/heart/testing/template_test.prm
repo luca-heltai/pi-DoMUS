@@ -73,7 +73,7 @@ subsection Error Tables
 end
 subsection IDA Solver Parameters
   set Absolute error tolerance                      = 1e-5
-  set Final time                                    = 0.25
+  set Final time                                    = 0.05
   set Ignore algebraic terms for error computations = false
   set Initial condition Newton max iterations       = 5
   set Initial condition Newton parameter            = 0.33
@@ -91,7 +91,7 @@ subsection IDA Solver Parameters
 end
 subsection IMEX Parameters
   set Absolute error tolerance                     = 1e-8
-  set Final time                                   = 0.25
+  set Final time                                   = 0.05
   set Initial time                                 = 0.0
   set Intervals between outputs                    = 1
   set Maximum number of inner nonlinear iterations = 15

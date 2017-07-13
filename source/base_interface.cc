@@ -20,10 +20,11 @@
 #include <deal2lkit/sacado_tools.h>
 #include <deal2lkit/fe_values_cache.h>
 
+#include "pidomus.h"
+
 using namespace dealii;
 using namespace deal2lkit;
 using namespace SacadoTools;
-
 
 template <int dim, int spacedim, typename LAC>
 BaseInterface<dim,spacedim,LAC>::
@@ -266,6 +267,34 @@ assemble_local_system_residual (const typename DoFHandler<dim,spacedim>::active_
   data.local_residual = residuals[0];
 
 
+}
+
+
+template<int dim, int spacedim, typename LAC>
+void
+BaseInterface<dim,spacedim,LAC>::apply_forcing_terms(const typename DoFHandler<dim,spacedim>::active_cell_iterator &cell,
+                                                     FEValuesCache<dim,spacedim> &scratch,
+                                                     std::vector<double> &local_residual) const {
+unsigned cell_id = cell->material_id();
+auto &forcing_terms = this->get_simulator().forcing_terms;
+if (forcing_terms.acts_on_id(cell_id))
+  {
+    double dummy = 0.0;
+    reinit(dummy, cell, scratch);
+
+    auto &fev = scratch.get_current_fe_values();
+    auto &q_points = scratch.get_quadrature_points();
+    auto &JxW = scratch.get_JxW_values();
+    auto qpsize=q_points.size();
+    auto lrsize=local_residual.size();
+    for (unsigned int q=0; q<qpsize; ++q)
+      for (unsigned int i=0; i<lrsize; ++i)
+        for (unsigned int c=0; c<n_components; ++c)
+          {
+            double B = forcing_terms.get_mapped_function(cell_id)->value(q_points[q],c);
+            local_residual[i] -= B*fev.shape_value_component(i,q,c)*JxW[q];
+          }
+  }
 }
 
 

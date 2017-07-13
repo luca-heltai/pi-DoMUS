@@ -32,6 +32,7 @@
 
 
 #include "base_interface.h"
+#include "pde_system_interface.h"
 #include "simulator_access.h"
 #include "pidomus_signals.h"
 #include "pidomus_lambdas.h"
@@ -181,7 +182,7 @@ public:
   const std::vector<typename LAC::VectorType> &get_eigenvectors();
 
 
-private:
+// private:
   void do_solve_eigenproblem(const LADealII::BlockMatrix &mat,
                              const LADealII::BlockMatrix &mass,
                              const LinearOperator<LADealII::VectorType> &jac,
@@ -237,7 +238,7 @@ private:
 
 #endif
 
-private:
+// private:
 
 
   /**
@@ -566,6 +567,11 @@ public:
   friend class Lambdas<dim,spacedim,LAC>;
 
   Lambdas<dim,spacedim,LAC> lambdas;
+
+  friend class BaseInterface<dim,spacedim,LAC>;
+
+//  template <typename Derived>
+//  friend class PDESystemInterface<dim, spacedim, Derived, LAC>;
 
 };
 

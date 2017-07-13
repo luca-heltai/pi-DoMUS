@@ -109,8 +109,8 @@ def main(args=None):
         prm.write(v_str.replace("**", "^"))
         prm.close()
 
-        os.system("sed -i 's/xxx/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
-        os.system("sed -i 's/yyy/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
+        os.system("sed -i '' 's/xxx/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
+        os.system("sed -i '' 's/yyy/" + testnames[i] +"/g' ALE_"+ testnames[i]+ '.prm' )
 
         #os.system("mpirun -np 4 ../build/heart --prm=ALE_"+ testnames[i] +".prm")
         os.system("../build/heart --prm=ALE_"+ testnames[i] +".prm --dealii")
