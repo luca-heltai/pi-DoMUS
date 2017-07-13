@@ -109,6 +109,7 @@ struct Signals
   boost::signals2::signal<void ()> end_refine_and_transfer_solutions;
   boost::signals2::signal<void ()> end_assemble_matrices;
   boost::signals2::signal<void ()> end_solver_should_restart;
+  boost::signals2::signal<void ()> end_run;
 
 };
 

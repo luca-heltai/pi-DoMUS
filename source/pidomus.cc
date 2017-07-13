@@ -254,6 +254,8 @@ void piDoMUS<dim, spacedim, LAC>::run ()
 
   eh.output_table(pcout);
 
+  signals.end_run();
+
 }
 
 

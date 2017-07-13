@@ -269,6 +269,10 @@ public:
       else
         iterations_last_step = 0;
     });
+
+     signals.end_run.connect([&, this]() {
+        mapped_mapping = nullptr;
+      });
   }
 
   // void
@@ -279,25 +283,22 @@ public:
       FEValuesCache<dim, spacedim> &scratch,
       std::vector<double> &local_residual) const {
 
-    auto &base = static_cast<const BaseInterface<dim,spacedim,LAC>&>(*this);
-
-    auto &cache = scratch.get_cache();
-    if (!cache.have("Mapped FEValuesCache")) {
-      auto mapping =
-          SP(new MappingQEulerian<dim, typename LAC::VectorType, spacedim>(
-              this->get_fe().degree, this->get_dof_handler(), this->get_solution()));
-      cache.add_copy(mapping, "Mapping");
+//    auto cache = scratch.get_cache();
+//    if (!cache.have("Mapped FEValuesCache")) {
+      auto mapping = MappingQEulerian<dim, typename LAC::VectorType, spacedim>(
+              this->get_fe().degree, this->get_dof_handler(), this->get_solution());
+//      cache.add_copy(mapping, "Mapping");
 
       const QGauss<dim> quadrature(this->get_fe().degree + 1);
       const QGauss<dim - 1> face_quadrature_formula(this->get_fe().degree + 1);
-      FEValuesCache<dim, spacedim> newscratch(
-          *mapping, this->get_fe(), quadrature, this->get_cell_update_flags(),
+      FEValuesCache<dim, spacedim> mapped_scratch(
+          mapping, this->get_fe(), quadrature, this->get_cell_update_flags(),
           face_quadrature_formula, this->get_face_update_flags());
-      cache.add_copy(newscratch, "Mapped FEValuesCache");
-    }
+//      cache.add_copy(newscratch, "Mapped FEValuesCache");
+//    }
 
-    auto &mapped_scratch =
-        cache.template get<FEValuesCache<dim, spacedim>>("Mapped FEValuesCache");
+//    auto &mapped_scratch =
+//        cache.template get<FEValuesCache<dim, spacedim>>("Mapped FEValuesCache");
 
     unsigned cell_id = cell->material_id();
     auto &forcing_terms = this->get_simulator().forcing_terms;
@@ -339,7 +340,7 @@ public:
                              (this->get_fe().degree,
                               this->get_dof_handler(),
                               this->get_solution()));
-    return *mapped_mapping;
+    return *(mapped_mapping.get());
   }
 
 private:
