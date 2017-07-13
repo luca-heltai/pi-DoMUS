@@ -26,3 +26,5 @@ find_package(pidomus 8.5 REQUIRED
 project(${TARGET})
 
 PIDOMUS_INVOKE_AUTOPILOT()
+
+add_custom_target(indent clang-format -i ${_src})
