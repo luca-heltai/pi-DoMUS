@@ -175,21 +175,10 @@ public:
       // This needs to be differnt w.r.t. the displacement variables, where
       // boundary conditions
       // are applied on the reference domain.
-
-      // NOTE: this doesn't change anything, velo. bc still on reference domain.
-      // quote dealii library: interpolate_boundary_values():
-      // "If this routine encounters a DoF that already is constrained
-      // (for instance by a hanging node constraint, see below, or any other
-      // type of constraint,
-      // e.g. from periodic boundary conditions), the old setting of the
-      // constraint (dofs the
-      // entry is constrained to, inhomogeneities) is kept and nothing happens."
       signals.update_constraint_matrices.connect(
           [&, this](std::vector<std::shared_ptr<dealii::ConstraintMatrix>>
                         &constraints,
                     ConstraintMatrix &constraints_dot) {
-            auto pcout = this->get_pcout();
-            pcout << "mapping velocities\n";
             auto &dof = this->get_dof_handler();
             auto &fe = this->get_fe();
 
@@ -209,8 +198,6 @@ public:
                               dirichlet_bc_dot.get_mapped_ids()[0]);
 
               auto f = dirichlet_bc.get_mapped_function(boundary_id);
-              pcout << f.get() << " \n"
-                    << std::flush; //<< f[1]<<" "<< f[2]<<" " << f[3] << "\n";
               auto f_dot = dirichlet_bc_dot.get_mapped_function(boundary_id);
 
               MappingQEulerian<dim, typename LAC::VectorType> mapping(
@@ -231,8 +218,6 @@ public:
       signals.fix_initial_conditions.connect(
           [&, this](typename LAC::VectorType &y,
                     typename LAC::VectorType &y_dot) {
-            auto pcout = this->get_pcout();
-            pcout << "fixing initial conditions\n";
             auto &dof = this->get_dof_handler();
             auto &fe = this->get_fe();
 
@@ -443,52 +428,6 @@ void ALENavierStokes<dim, spacedim, LAC>::energies_and_residuals(
   ResidualType et = 0;
   double dummy = 0.0;
 
-  /*
-    double h = cell->diameter();
-
-    for (unsigned int face=0; face < GeometryInfo<dim>::faces_per_cell;
-    ++face)
-    {
-      if (cell->face(face)->at_boundary())
-      {
-        this->reinit(et, cell, face, fe_cache);
-
-        // Displacement:
-        auto &d_dot_ = fe_cache.get_values( "solution_dot", "d_dot",
-    displacement, et);
-
-        // Velocity:
-        auto &u_ = fe_cache.get_values("solution", "grad_u", velocity, et);
-
-        // Pressure:
-        // auto &grad_p_ = fe_cache.get_gradients("solution", "p", pressure,
-    et);
-
-        auto &fev = fe_cache.get_current_fe_values();
-        auto &q_points = fe_cache.get_quadrature_points();
-        auto &JxW = fe_cache.get_JxW_values();
-
-        for (unsigned int q=0; q<q_points.size(); ++q)
-        {
-          // Displacement:
-          const Tensor<1, dim, ResidualType> &d_dot = d_dot_[q];
-
-          // Velocity:
-          const Tensor<1, dim, ResidualType> &u = u_[q];
-
-          for (unsigned int i=0; i<residual[0].size(); ++i)
-          {
-            // Test functions:
-            // auto d_test = fev[displacement].value(i,q);
-            auto u_test = fev[velocity].value(i,q);
-
-            residual[0][i] += (1./h)*( (u - d_dot) * u_test )*JxW[q];
-          }
-        } // end loop over quadrature points
-        break;
-      }
-    } // end loop over faces
-  */
   this->reinit(et, cell, fe_cache);
 
   // displacement:
@@ -594,9 +533,6 @@ void ALENavierStokes<dim, spacedim, LAC>::energies_and_residuals(
                                      u_test)
 
               + scalar_product(J_ale * sigma * Ft_inv, grad_u_test)
-              // old parts
-              //- div_u * p_test
-              //- p * div_u_test
 
               // divergence free constriant
               - trace(grad_u * F_inv) * J_ale * p_test
@@ -623,12 +559,6 @@ void ALENavierStokes<dim, spacedim, LAC>::compute_system_operators(
   const DoFHandler<dim, spacedim> &dh = this->get_dof_handler();
   const ParsedFiniteElement<dim, spacedim> fe = this->pfe;
 
-  // TODO 1: DONE find a way to check if local refinement is turned off in
-  // "compute_system_operators()"
-
-  // TODO 2: DONE check convergence time of last step
-  // get iterations of last step, if iterations > 15: refine
-
   static int counter = 0;
 
   if (adaptive_preconditioners_on == true) {
@@ -641,7 +571,7 @@ void ALENavierStokes<dim, spacedim, LAC>::compute_system_operators(
                                                      fe, dh);
       jac_M.initialize_preconditioner<>(matrices[1]->block(2, 2));
       counter++;
-      // make verbose with pcout
+      // make verbose with pcout and parameter in prm file
       // std::cout << "precons reinitialized!" << std::endl;
     }
   } else {
