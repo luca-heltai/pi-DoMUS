@@ -134,6 +134,7 @@ void piDoMUS<dim, spacedim, LAC>::update_functions_and_constraints (const double
       dirichlet_bcs_dot.set_time(t);
       forcing_terms.set_time(t);
       neumann_bcs.set_time(t);
+      exact_solution.set_time(t);
     }
 
   // clear previously stored constraints
