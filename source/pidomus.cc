@@ -332,9 +332,6 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
   initializer(solution);
   initializer(solution_dot);
 
-  update_functions_and_constraints(current_time);
-
-
   if (we_are_parallel)
     {
       initializer.ghosted(locally_relevant_solution);
@@ -350,6 +347,7 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
       initializer(locally_relevant_previous_explicit_solution);
     }
 
+  update_functions_and_constraints(current_time);
 
   for (unsigned int i=0; i < n_matrices; ++i)
     {
@@ -394,6 +392,8 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
 
       signals.fix_initial_conditions(solution, solution_dot);
       locally_relevant_explicit_solution = solution;
+      locally_relevant_solution = solution;
+      locally_relevant_solution_dot = solution_dot;
 
       // Do twice in the first run, in case constraints and or
       // bc depend on initial condition.
