@@ -201,7 +201,7 @@ public:
               auto f_dot = dirichlet_bc_dot.get_mapped_function(boundary_id);
 
               MappingQEulerian<dim, typename LAC::VectorType> mapping(
-                  fe.degree, dof, this->get_solution());
+                  fe.degree, dof, this->get_locally_relevant_solution());
 
               VectorTools::interpolate_boundary_values(
                   mapping, dof, boundary_id, *f, *constraints[0],
@@ -228,7 +228,7 @@ public:
             auto &initial_solution_dot = this->get_initial_solution_dot();
 
             MappingQEulerian<dim, typename LAC::VectorType> mapping(fe.degree,
-                                                                    dof, y);
+                                                                    dof, this->get_locally_relevant_solution());
 
             if (fe.has_support_points()) {
               VectorTools::interpolate(mapping, dof, initial_solution, y,
@@ -271,7 +271,7 @@ public:
 //    auto cache = scratch.get_cache();
 //    if (!cache.have("Mapped FEValuesCache")) {
       auto mapping = MappingQEulerian<dim, typename LAC::VectorType, spacedim>(
-              this->get_fe().degree, this->get_dof_handler(), this->get_solution());
+              this->get_fe().degree, this->get_dof_handler(), this->get_locally_relevant_solution());
 //      cache.add_copy(mapping, "Mapping");
 
       const QGauss<dim> quadrature(this->get_fe().degree + 1);
@@ -324,7 +324,7 @@ public:
       mapped_mapping = SP(new MappingQEulerian<dim, typename LAC::VectorType, spacedim>
                              (this->get_fe().degree,
                               this->get_dof_handler(),
-                              this->get_solution()));
+                              this->get_locally_relevant_solution()));
     return *(mapped_mapping.get());
   }
 
