@@ -390,12 +390,13 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
             }
         }
 
+      locally_relevant_solution = solution;
       signals.fix_initial_conditions(solution, solution_dot);
-      locally_relevant_explicit_solution = solution;
 
       // Do twice in the first run, in case constraints and or
       // bc depend on initial condition.
       update_functions_and_constraints(current_time);
+      locally_relevant_explicit_solution = solution;
     }
 
 

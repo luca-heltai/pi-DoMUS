@@ -115,24 +115,14 @@ template <int dim, int spacedim, typename LAC>
 const typename LAC::VectorType &
 SimulatorAccess<dim,spacedim,LAC>::get_locally_relevant_solution () const
 {
-  if(simulator->we_are_parallel) {
-      simulator->locally_relevant_solution = simulator->solution;
-      return simulator->locally_relevant_solution;
-    }
-  else
-    return simulator->solution;
+  return simulator->locally_relevant_solution;
 }
 
 template <int dim, int spacedim, typename LAC>
 const typename LAC::VectorType &
 SimulatorAccess<dim,spacedim,LAC>::get_locally_relevant_solution_dot () const
 {
-  if(simulator->we_are_parallel) {
-      simulator->locally_relevant_solution_dot = simulator->solution_dot;
-      return simulator->locally_relevant_solution_dot;
-    }
-  else
-    return simulator->solution_dot;
+  return simulator->locally_relevant_solution_dot;
 }
 
 template <int dim, int spacedim, typename LAC>

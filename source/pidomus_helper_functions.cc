@@ -150,6 +150,7 @@ void piDoMUS<dim, spacedim, LAC>::update_functions_and_constraints (const double
                                            constraints_dot);
 
   // add user-supplied bcs
+  locally_relevant_solution = solution;
   signals.update_constraint_matrices(train_constraints, constraints_dot);
 
   zero_average.apply_zero_average_constraints(*dof_handler, *train_constraints[0]);
