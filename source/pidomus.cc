@@ -390,7 +390,10 @@ void piDoMUS<dim, spacedim, LAC>::setup_dofs (const bool &first_run)
             }
         }
 
+      locally_relevant_solution = solution;
+      locally_relevant_solution_dot = solution_dot;
       signals.fix_initial_conditions(solution, solution_dot);
+
       locally_relevant_explicit_solution = solution;
       locally_relevant_solution = solution;
       locally_relevant_solution_dot = solution_dot;
